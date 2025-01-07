@@ -1,0 +1,1359 @@
+#define HAS_MULTILINE_VARIABLE 1
+#define NLB_IP_AS_ROUTE 1
+!
+! TEMPLATE NAME: iap_canada -- VERSION: 32 -- PILOT_BRANCH -- ROLLUP: NWEE-3345-Enable-FTM-LCI-Broadcast
+
+!---------VC Settings-----------
+virtual-controller-country CA
+name %vc_name%
+virtual-controller-ip %static_vc_ip%
+terminal-access
+loginsession timeout 60
+%if deny_list%
+ %deny_list%
+%endif%
+
+banner motd ********************************************************************************
+banner motd "                                  WARNING:"
+banner motd "           THIS SYSTEM IS PRIVATE PROPERTY FOR THE USE OF THE COMPANY"
+banner motd "                       **** AUTHORIZED USERS ONLY! ****"
+banner motd "Any use of this computer network system shall be deemed to be express consent"
+banner motd "to monitoring of such use and to such additional monitoring as may be necessary"
+banner motd "to identify any unauthorized user. The system administrator or other"
+banner motd "representatives of the system owner may monitor system use at any time without"
+banner motd "further notice or consent. Unauthorized use of this  system and any other"
+banner motd "criminal conduct revealed by such use is subject to disclosure to law"
+banner motd "enforcement officials and prosecution to the full extent of  the law."
+banner motd "Unauthorized access is a violation of state and federal, civil and criminal"
+banner motd laws.
+banner motd ********************************************************************************
+
+clock timezone UTC 0 0
+rf-band all
+report-rssi-to-central unassociated-and-associated-clients
+report-rssi-to-central-level 0
+
+%allow_aps%
+
+radsec-ca-checksum cg_radsec
+cp-cert-checksum aruba_default
+
+dpi
+url-visibility
+
+wlan mpsk-local mpsk-profile
+ mpsk-local-passphrase behr-kiosks 28KEIO79L1yROde8 behr
+ mpsk-local-passphrase crown-forklifts 7W0jnYmU69pJAT8S crown
+ mpsk-local-passphrase digital-signage 4CDsOa0EFm2U76ED dsign
+ mpsk-local-passphrase wis-inventory YoFoOq92MvKVFu3e wis
+ mpsk-local-passphrase poc-iot-alexa-google kNpXh1mfis2Qxn1g iot
+!------RF--------------
+arm
+ %if enable_ftm%
+   %if enable_ftm=Y%
+      wide-bands 5ghz
+      max-tx-power 21
+      %if enable_80mhz%
+        %if enable_80mhz=Y%
+           80mhz-support
+           max-tx-power 33
+         %endif%
+      %endif%
+   %else%
+     wide-bands none
+     max-tx-power 21
+   %endif%
+   %else%
+     wide-bands none
+     max-tx-power 21
+ %endif%  
+ a-channels 36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,153,157,161,36+,44+,52+,60+,100+,108+,116+,124+,132+,140+,157+,36E,52E,100E,116E,132E
+ g-channels 1,6,11
+ min-tx-power 6
+ band-steering-mode disable
+ air-time-fairness-mode fair-access
+ client-aware
+ scanning
+ client-match
+
+rf dot11g-radio-profile
+ dot11h
+ max-tx-power 9
+ min-tx-power 6
+
+rf dot11a-radio-profile
+ dot11h
+ %if enable_80mhz%
+  %if enable_80mhz=Y%
+   max-tx-power 30
+   min-tx-power 27
+  %else%
+   max-tx-power 21
+   min-tx-power 18
+  %endif%
+ %else%
+  max-tx-power 21
+  min-tx-power 18
+ %endif%
+ zero-wait-dfs
+
+syslog-level warn ap-debug
+syslog-level warn network
+syslog-level warn security
+syslog-level warn system
+syslog-level warn user
+syslog-level warn user-debug
+syslog-level warn wireless
+
+%if syslog_override = Y%
+syslog-level %syslog_level%
+%endif%
+
+!-----RADIUS
+dynamic-radius-proxy
+
+!-----MGMT LOGIN
+mgmt-auth-server thd-naas
+mgmt-auth-server-local-backup
+hash-mgmt-password
+hash-mgmt-user admin password hash 8ca8004802db36096a18963481e2731ba4455b85d2957f5ebe131ebf9407cad8ce38b67c23
+
+routing-profile
+%if is_staging%
+%if is_staging=Y%
+%else%
+ route  0.0.0.0  0.0.0.0  %vlan190_gateway%
+ route  10.47.15.10 255.255.255.255  %vlan190_gateway%
+ route  10.0.0.0  255.0.0.0  %vlan802_gateway%
+ route  %radsec_server_1% 255.255.255.255 %vlan802_gateway%
+ route  151.140.0.0  255.255.0.0  %vlan802_gateway%
+ route  165.130.0.0  255.255.0.0  %vlan802_gateway%
+ route  172.19.8.0  255.255.254.0  %vlan802_gateway%
+ route  172.19.64.0  255.255.240.0  %vlan802_gateway%
+ route  172.21.128.0  255.255.128.0  %vlan802_gateway%
+ route  172.19.174.0  255.255.255.0  %vlan802_gateway%
+ route  172.19.175.64  255.255.255.192  %vlan802_gateway%
+ route  172.19.190.0  255.255.255.0  %vlan802_gateway%
+ route  172.19.191.64  255.255.255.192  %vlan802_gateway%
+ route  172.19.206.0  255.255.255.0  %vlan802_gateway%
+ route  172.19.207.64  255.255.255.192  %vlan802_gateway%
+ route  172.19.222.0  255.255.255.0  %vlan802_gateway%
+ route  172.19.223.64  255.255.255.192  %vlan802_gateway%
+ route  172.20.0.0  255.255.0.0  %vlan802_gateway%
+ route  224.0.0.0  224.0.0.0  0.0.0.0
+ route 20.72.193.7 255.255.255.255 0.0.0.0
+ route 20.99.142.131 255.255.255.255 0.0.0.0
+ route 35.160.64.44 255.255.255.255 0.0.0.0
+%endif%
+%else%
+ route  0.0.0.0  0.0.0.0  %vlan190_gateway%
+ route  10.47.15.10 255.255.255.255  %vlan190_gateway%
+ route  10.0.0.0  255.0.0.0  %vlan802_gateway%
+ route  %radsec_server_1% 255.255.255.255 %vlan802_gateway%
+ route  151.140.0.0  255.255.0.0  %vlan802_gateway%
+ route  165.130.0.0  255.255.0.0  %vlan802_gateway%
+ route  172.19.8.0  255.255.254.0  %vlan802_gateway%
+ route  172.19.64.0  255.255.240.0  %vlan802_gateway%
+ route  172.21.128.0  255.255.128.0  %vlan802_gateway%
+ route  172.19.174.0  255.255.255.0  %vlan802_gateway%
+ route  172.19.175.64  255.255.255.192  %vlan802_gateway%
+ route  172.19.190.0  255.255.255.0  %vlan802_gateway%
+ route  172.19.191.64  255.255.255.192  %vlan802_gateway%
+ route  172.19.206.0  255.255.255.0  %vlan802_gateway%
+ route  172.19.207.64  255.255.255.192  %vlan802_gateway%
+ route  172.19.222.0  255.255.255.0  %vlan802_gateway%
+ route  172.19.223.64  255.255.255.192  %vlan802_gateway%
+ route  172.20.0.0  255.255.0.0  %vlan802_gateway%
+ route  224.0.0.0  224.0.0.0  0.0.0.0
+ route 20.72.193.7 255.255.255.255 0.0.0.0
+ route 20.99.142.131 255.255.255.255 0.0.0.0
+ route 35.160.64.44 255.255.255.255 0.0.0.0
+%endif%
+
+deny-local-routing
+
+!------Corporate ROLES---------
+wlan access-rule bandsaw
+ rule any any match udp 67 68 permit
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule any any match any any any permit
+
+wlan access-rule concrete
+ rule any any match udp 67 68 permit
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule any any match udp 53 53 permit
+ rule any any match tcp 2000 2000 permit tos 46 dot1p-priority 6
+ rule any any match udp 5000 5031 permit disable-scanning tos 46 dot1p-priority 6
+ rule any any match any any any permit tos 46 dot1p-priority 6
+
+wlan access-rule lattice
+ rule any any match any any any permit
+
+wlan access-rule behr
+ vlan 13
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 src-nat vlan 190
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule alias *.ntp.org match any any any src-nat vlan 190
+ rule alias *.bluefoxengage.com match any any any src-nat vlan 190
+ rule alias *.convergent.com match any any any src-nat vlan 190
+ rule alias *.engagekiosk.net match any any any src-nat vlan 190
+ rule alias *.vcsrelay.com match any any any src-nat vlan 190
+ rule alias *.wisemo.com match any any any src-nat vlan 190
+ %if allowlist_behr = Y%
+  %allowlist_behr_entries%
+ %endif%
+ rule 224.0.0.0 240.0.0.0 match any any any permit
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match appcategory gaming deny
+ rule any any match appcategory social-networking deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory games deny
+ rule any any match webcategory hacking deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory music deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory streaming-media deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match any any any src-nat vlan 190
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+
+wlan access-rule crown
+ vlan 13
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 src-nat vlan 190
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ %if allowlist_crown = Y%
+  %allowlist_crown_entries%
+ %endif%
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule 224.0.0.0 240.0.0.0 match any any any permit
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match appcategory gaming deny
+ rule any any match appcategory social-networking deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory games deny
+ rule any any match webcategory hacking deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory music deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory streaming-media deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match any any any src-nat vlan 190
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+
+wlan access-rule dsign
+ vlan 13
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 src-nat vlan 190
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule alias *.digichief.com match any any any src-nat vlan 190
+ rule alias *.hughessignage.com match any any any src-nat vlan 190
+ rule alias mediasignage.blob.core.windows.net match any any any src-nat vlan 190
+ %if allowlist_dsign = Y%
+  %allowlist_dsign_entries%
+ %endif%
+ rule 224.0.0.0 240.0.0.0 match any any any permit
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match appcategory gaming deny
+ rule any any match appcategory social-networking deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory games deny
+ rule any any match webcategory hacking deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory music deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory streaming-media deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match any any any src-nat vlan 190
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+
+wlan access-rule wis
+ vlan 13
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 src-nat vlan 190
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule alias *.rgis.com match any any any src-nat vlan 190
+ %if allowlist_wis = Y%
+  %allowlist_wis_entries%
+ %endif%
+ rule 224.0.0.0 240.0.0.0 match any any any permit
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match appcategory gaming deny
+ rule any any match appcategory social-networking deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory games deny
+ rule any any match webcategory hacking deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory music deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory streaming-media deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match any any any src-nat vlan 190
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+
+wlan access-rule iot
+ vlan 15
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 src-nat vlan 190
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule any any match udp 123 123 src-nat vlan 190
+ rule any any match tcp 8089 8090 src-nat vlan 190
+ rule any any match tcp 8189 8189 src-nat vlan 190
+ rule any any match tcp 9543 9543 src-nat vlan 190
+ rule any any match tcp 11095 11095 src-nat vlan 190
+ rule alias *.npgtssweb.com match any any any src-nat vlan 190
+ rule alias gtsappeuspersacfg.blob.core.windows.net match any any any src-nat vlan 190
+ rule alias rcvp-wu2-per-iothub0.azure-devices.net match any any any src-nat vlan 190
+ rule alias ums.ustream.tv match any any any src-nat vlan 190
+ %if allowlist_iot = Y%
+  %allowlist_iot_entries%
+ %endif%
+ rule 224.0.0.0 240.0.0.0 match any any any permit
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match appcategory gaming deny
+ rule any any match appcategory social-networking deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory games deny
+ rule any any match webcategory hacking deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory music deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory streaming-media deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match any any any src-nat vlan 190
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+wlan access-rule demopool1
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule any any match udp 53 53 permit
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule 10.110.0.0 255.254.0.0 match any any any permit
+ rule 10.112.0.0 255.254.0.0 match any any any permit
+ rule 10.114.0.0 255.255.0.0 match any any any permit
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule 224.0.0.0 224.0.0.0 match any any any permit
+ rule alias hughessignage.com match any any any permit
+ rule alias wxapi.digichief.com match any any any permit
+ rule alias silo.digichief.com match any any any permit
+ rule alias mediasignage.blob.core.windows.net match any any any permit
+ rule alias apps.hughessignage.com match any any any permit
+ rule alias ms.hughessignage.com match any any any permit
+ rule alias logging.hughessignage.com match udp any 8888 permit
+ rule alias rmv.rgis.com match any any any permit
+ rule alias cloud.convergent.com match any any any permit
+ rule alias cloud01.vcsrelay.com match any any any permit
+ rule alias cloudprimary01.vcsrelay.com match any any any permit
+ rule alias webapi.engagekiosk.net match any any any permit  
+%if allowlist_demopool = Y%
+ %allowlist_demopool_entries%
+%endif%
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match webcategory streaming-media deny
+ rule any any match webcategory hacking deny
+ rule any any match webcategory games deny
+ rule any any match webcategory music deny
+ rule any any match webcategory internet-communications deny
+ rule any any match any any any permit
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+wlan access-rule demopool2
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule any any match udp 53 53 permit
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule 10.110.0.0 255.254.0.0 match any any any permit
+ rule 10.112.0.0 255.254.0.0 match any any any permit
+ rule 10.114.0.0 255.255.0.0 match any any any permit
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule 224.0.0.0 224.0.0.0 match any any any permit
+ rule alias hughessignage.com match any any any permit
+ rule alias wxapi.digichief.com match any any any permit
+ rule alias silo.digichief.com match any any any permit
+ rule alias mediasignage.blob.core.windows.net match any any any permit
+ rule alias apps.hughessignage.com match any any any permit
+ rule alias ms.hughessignage.com match any any any permit
+ rule alias logging.hughessignage.com match udp any 8888 permit
+ rule alias rmv.rgis.com match any any any permit
+ rule alias cloud.convergent.com match any any any permit
+ rule alias cloud01.vcsrelay.com match any any any permit
+ rule alias cloudprimary01.vcsrelay.com match any any any permit
+ rule alias webapi.engagekiosk.net match any any any permit  
+%if allowlist_demopool = Y%
+ %allowlist_demopool_entries%
+%endif%
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match webcategory streaming-media deny
+ rule any any match webcategory hacking deny
+ rule any any match webcategory games deny
+ rule any any match webcategory music deny
+ rule any any match webcategory internet-communications deny
+ rule any any match any any any permit
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+
+wlan access-rule steel
+ rule any any match udp 67 68 permit
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule any any match udp 53 53 permit
+ rule any any match tcp 80 80 permit
+ rule any any match tcp 443 443 permit
+ rule any any match tcp 2000 2000 permit tos 46 dot1p-priority 6
+ rule any any match udp 5000 5031 permit disable-scanning tos 46 dot1p-priority 6
+ rule any any match any any any permit tos 46 dot1p-priority 6
+ 
+ wlan access-rule rebar
+ rule any any match udp 67 68 permit
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule 216.12.248.0 255.255.255.0 match any any any deny
+ rule 216.12.232.0 255.255.255.0 match any any any deny
+ rule 216.12.250.128 255.255.255.128 match any any any deny
+ rule 216.12.234.0 255.255.255.128 match any any any deny
+ rule 144.161.152.0 255.255.254.0 match any any any deny
+ rule any any match udp 53 53 permit
+ rule any any match tcp 2000 2000 permit tos 46 dot1p-priority 6
+ rule any any match udp 5000 5031 permit disable-scanning tos 46 dot1p-priority 6
+ rule any any match udp 41102 41103 permit disable-scanning tos 46 dot1p-priority 6
+ rule any any match udp 50007 50009 permit disable-scanning tos 46 dot1p-priority 6
+ rule any any match udp 50011 50011 permit disable-scanning tos 46 dot1p-priority 6
+ rule any any match any any any permit tos 46 dot1p-priority 6
+
+wlan access-rule default_wired_port_profile
+ rule any any match any any any permit
+
+wlan access-rule wired-SetMeUp
+ rule masterip 0.0.0.0 match tcp 80 80 permit
+ rule masterip 0.0.0.0 match tcp 4343 4343 permit
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 permit
+
+wlan access-rule trunk
+ rule any any match any any any permit
+
+wlan access-rule enet1
+ rule any any match any any any permit
+
+%if enet1_vlan%
+ wired-port-profile enet1
+  switchport-mode access
+  native-vlan %enet1_vlan%
+  no shutdown
+  access-rule-name enet1
+  speed auto
+  duplex auto
+  no poe
+  type employee
+  captive-portal disable
+  no dot1x
+ enet1-port-profile enet1
+%endif%
+!------GUEST ROLES---------
+wlan access-rule Guest-Passpoint
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 src-nat vlan 190
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule 224.0.0.0 224.0.0.0 match any any any deny
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 192.168.0.0 255.255.0.0 match any any any deny
+%if allowlist_guest = Y%
+ %allowlist_guest_entries%
+%endif%
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match any any any src-nat vlan 190
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+wlan access-rule GUEST-WIFI_#guest#_
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 src-nat vlan 190
+ rule alias licdn.com match tcp 443 443 src-nat vlan 190
+ rule alias twimg.com match tcp 443 443 src-nat vlan 190
+ rule alias bam.nr-data.net match tcp 443 443 src-nat vlan 190
+ rule alias js-agent.newrelic.com match tcp 443 443 src-nat vlan 190
+ rule alias crl.comodoca.com match tcp 80 80 src-nat vlan 190
+ rule alias crt.comodoca.com match tcp 80 80 src-nat vlan 190
+ rule alias secure.comodo.com match tcp 80 80 src-nat vlan 190
+ rule alias symcb.com match tcp 80 80 src-nat vlan 190
+ rule alias symcd.com match tcp 80 80 src-nat vlan 190
+ rule alias digicert.com match tcp 80 80 src-nat vlan 190
+ rule alias guest.thd.cloudauth.net match tcp 80 80 src-nat vlan 190
+ rule alias guest.thd.cloudauth.net match tcp 443 443 src-nat vlan 190
+
+wlan access-rule GUEST-WIFI
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 src-nat vlan 190
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule 224.0.0.0 224.0.0.0 match any any any deny
+ rule alias instant.arubanetworks.com match any any any deny
+ rule alias securelogin.arubanetworks.com match any any any deny
+ rule 10.0.0.0 255.0.0.0 match any any any deny
+ rule 172.16.0.0 255.240.0.0 match any any any deny
+ rule 192.168.0.0 255.255.0.0 match any any any deny
+%if allowlist_guest = Y%
+ %allowlist_guest_entries%
+%endif%
+ rule any any match app youtube permit
+ rule any any match appcategory streaming deny
+ rule any any match webcategory adult-and-pornography deny
+ rule any any match webcategory nudity deny
+ rule any any match webcategory malware-sites deny
+ rule any any match webcategory parked-domains deny
+ rule any any match webcategory peer-to-peer-web deny
+ rule any any match webcategory phishing-and-other-frauds deny
+ rule any any match webcategory proxy-avoidance-and-anonymizers deny
+ rule any any match webcategory shareware-and-freeware deny
+ rule any any match webcategory spyware-and-adware deny
+ rule any any match webcategory bot-nets deny
+ rule any any match webcategory spam-urls deny
+ rule any any match webcategory abused-drugs deny
+ rule any any match webcategory alcohol-and-tobacco deny
+ rule any any match webcategory dating deny
+ rule any any match webcategory gambling deny
+ rule any any match webcategory questionable deny
+ rule any any match webcategory sex-education deny
+ rule any any match webcategory swimsuits-and-intimate-apparel deny
+ rule any any match webcategory weapons deny
+ rule any any match webcategory cult-and-occult deny
+ rule any any match webcategory hate-and-racism deny
+ rule any any match webcategory illegal deny
+ rule any any match any any any src-nat vlan 190
+ bandwidth-limit downstream 32000
+ bandwidth-limit upstream 32000
+!--------AirPassHS20------------
+hotspot anqp-nai-realm-profile ATT-100-FirstNet
+ enable
+ nai-realm-name wlan.mnc100.mcc313.3gppnetwork.org
+ nai-realm-encoding rfc4282
+ nai-realm-eap-method eap-aka
+ nai-realm-auth-id-1 credential
+ nai-realm-auth-value-1 sim
+ nai-realm-auth-id-2 reserved
+ nai-realm-auth-value-2 reserved
+ nai-home-realm
+
+hotspot anqp-nai-realm-profile ATT-150-Cricket
+ enable
+ nai-realm-name wlan.mnc150.mcc310.3gppnetwork.org
+ nai-realm-encoding rfc4282
+ nai-realm-eap-method eap-aka
+ nai-realm-auth-id-1 credential
+ nai-realm-auth-value-1 sim
+ nai-realm-auth-id-2 reserved
+ nai-realm-auth-value-2 reserved
+ nai-home-realm
+
+hotspot anqp-nai-realm-profile ATT-280-Mobility
+ enable
+ nai-realm-name wlan.mnc280.mcc310.3gppnetwork.org
+ nai-realm-encoding rfc4282
+ nai-realm-eap-method eap-aka
+ nai-realm-auth-id-1 credential
+ nai-realm-auth-value-1 sim
+ nai-realm-auth-id-2 reserved
+ nai-realm-auth-value-2 reserved
+ nai-home-realm
+
+hotspot anqp-nai-realm-profile ATT-410
+ enable
+ nai-realm-name wlan.mnc410.mcc310.3gppnetwork.org
+ nai-realm-encoding rfc4282
+ nai-realm-eap-method eap-aka
+ nai-realm-auth-id-1 credential
+ nai-realm-auth-value-1 sim
+ nai-realm-auth-id-2 reserved
+ nai-realm-auth-value-2 reserved
+ nai-home-realm
+
+hotspot anqp-nai-realm-profile TMO-260
+ enable
+ nai-realm-name wlan.mnc260.mcc310.3gppnetwork.org
+ nai-realm-encoding rfc4282
+ nai-realm-eap-method eap-aka
+ nai-realm-auth-id-1 credential
+ nai-realm-auth-value-1 sim
+ nai-realm-auth-id-2 reserved
+ nai-realm-auth-value-2 reserved
+ nai-home-realm
+
+hotspot anqp-3gpp-profile ATT-TMO
+ enable
+ 3gpp-plmn1 313100
+ 3gpp-plmn2 310150
+ 3gpp-plmn3 310280
+ 3gpp-plmn4 310410
+ 3gpp-plmn5 310260
+
+hotspot anqp-venue-name-profile THD-VENUE
+  enable
+  venue-group mercantile
+  venue-type retail-store
+  venue-lang-code en
+  venue-name "The Home Depot Store #%_site_number%"
+
+hotspot anqp-ip-addr-avail-profile V4-NAT
+ enable
+ ipv4-addr-avail single-nated-private
+ no ipv6-addr-avail
+
+hotspot anqp-domain-name-profile THD-DOMAIN
+ enable
+ domain-name www.homedepot.com
+ 
+hotspot h2qp-oper-name-profile THD-OPER
+ enable
+ op-lang-code eng
+ op-fr-name "The Home Depot" 
+
+hotspot hs-profile Guest-Passpoint
+ enable
+ no comeback-mode
+ no asra
+ internet
+ no pame-bi
+ no group-frame-block
+ no p2p-dev-mgmt
+ no p2p-cross-connect
+ addtl-roam-cons-ois 0
+ gas-comeback-delay 100
+ query-response-length-limit 4
+ access-network-type free-public
+ venue-group mercantile
+ venue-type retail-store
+ roam-cons-len-1 5
+ advertisement-profile anqp-nai-realm ATT-100-FirstNet
+ advertisement-profile anqp-nai-realm ATT-150-Cricket
+ advertisement-profile anqp-nai-realm ATT-280-Mobility
+ advertisement-profile anqp-nai-realm ATT-410
+ advertisement-profile anqp-nai-realm TMO-260
+ advertisement-profile anqp-venue-name THD-VENUE
+ advertisement-profile anqp-3gpp ATT-TMO
+ advertisement-profile anqp-ip-addr-avail V4-NAT
+ advertisement-profile anqp-domain-name THD-DOMAIN
+ advertisement-profile h2qp-oper-name THD-OPER
+
+!--------Corporate WLANs-------------
+wlan ssid-profile bandsaw
+  %if disable_bandsaw%
+   %if disable_bandsaw=Y%
+      disable
+   %else%
+     enable
+  %endif%
+ %else%
+   enable
+ %endif%
+ type employee
+ essid bandsaw
+ opmode wpa2-aes
+ max-authentication-failures 0
+ advertise-ap-name
+ vlan 2
+ auth-server ISE_01
+ auth-server ISE_02
+ rf-band 5.0
+ captive-portal disable
+ dtim-period 1
+ broadcast-filter arp
+ radius-accounting
+ radius-interim-accounting-interval 15
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ multicast-rate-optimization
+ dynamic-multicast-optimization
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 64
+ wmm-uapsd-disable
+ dot11k
+ dot11v
+ denylist
+
+wlan ssid-profile rebar
+ %if disable_rebar%
+   %if disable_rebar=Y%
+      disable
+   %else%
+     enable
+  %endif%
+ %else%
+   enable
+ %endif%
+ type voice
+ essid rebar
+ wpa-passphrase 778a1824822b435a0fdcaddb78826c215d464a14ae7c0f36ab72ed062f21cc3f4bd1140b08c489f31704a7b744d1c87b63fea22469d4ac90fc1c32129aa679dfbf1a8431bcf0e2fe
+ opmode wpa2-psk-aes
+ max-authentication-failures 0
+ advertise-ap-name
+ vlan 416
+ auth-server InternalServer
+ rf-band all
+ captive-portal disable
+ dtim-period 2
+ broadcast-filter arp
+ g-min-tx-rate 6
+ a-basic-rates 6,9
+ g-basic-rates 6
+ multicast-rate-optimization
+ dynamic-multicast-optimization
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 128
+ wmm-voice-dscp "46"
+ wmm-uapsd-disable
+ dot11k
+ dot11v
+ denylist
+
+wlan ssid-profile concrete
+ disable
+ type voice
+ essid concrete
+ wpa-passphrase c184f3f7624d1180b4f44a0d14dd9ae64cc3de962c041fc7cee2e0049df3a9e31563424423d368b24c2005b978541a490f174e465d338b727743f2fdf8d2bace20ea14734c813a84
+ opmode wpa2-psk-aes
+ max-authentication-failures 0
+ advertise-ap-name
+ vlan 12
+ auth-server InternalServer
+ rf-band 5.0
+ captive-portal disable
+ dtim-period 2
+ broadcast-filter arp
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ multicast-rate-optimization
+ dynamic-multicast-optimization
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 64
+ wmm-voice-dscp "46"
+ wmm-uapsd-disable
+ dot11k
+ dot11v
+ denylist
+
+wlan ssid-profile lattice
+ %if disable_lattice%
+  %if disable_lattice=Y%
+   disable
+  %else%
+   enable
+  %endif%
+ %else%
+  enable
+ %endif%
+ type employee
+ essid lattice
+ opmode mpsk-local
+ max-authentication-failures 0
+ advertise-ap-name
+ auth-server InternalServer
+ rf-band all
+ captive-portal disable
+ dtim-period 1
+ broadcast-filter none
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 128
+ mpsk-local mpsk-profile
+ okc
+ dot11k
+ dot11v
+ denylist
+wlan ssid-profile demopool1
+  %if disable_demopool1%
+   %if disable_demopool1=Y%
+      disable
+   %else%
+     enable
+   %endif%
+ %else%
+   enable
+ %endif%
+ type employee
+ essid demopool1
+ wpa-passphrase 00cad9bc9f7ed16bcf4fa05c7ef943a370f60fc815d1c689 
+ opmode wpa2-psk-aes
+ max-authentication-failures 0
+ advertise-ap-name
+ vlan 26
+ auth-server InternalServer
+ rf-band all
+ captive-portal disable
+ dtim-period 2
+ broadcast-filter none
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 80
+ wmm-uapsd-disable
+ dot11k
+ dot11v
+ denylist
+
+wlan ssid-profile demopool2
+  %if disable_demopool2%
+   %if disable_demopool2=Y%
+      disable
+   %else%
+    enable
+   %endif%
+ %else%
+   enable
+ %endif%
+ type employee
+ essid demopool2
+ wpa-passphrase a8de11402eb4cbbdf8217ab60ae5cfeff682f0a036fb919858381df31d54fd7b
+ opmode wpa2-psk-aes
+ max-authentication-failures 0
+ advertise-ap-name
+ vlan 26
+ auth-server InternalServer
+ rf-band all
+ captive-portal disable
+ dtim-period 2
+ broadcast-filter none
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 64
+ wmm-uapsd-disable
+ dot11k
+ dot11v
+ denylist
+
+wlan ssid-profile steel
+ %if disable_steel%
+   %if disable_steel=Y%
+      disable
+   %else%
+     enable
+   %endif%
+ %else%
+   enable
+ %endif%
+ type voice
+ essid steel
+ wpa-passphrase e91b0dff2cbdd0b18f990a51ebd5a311e75281d09e9dff10f417c668afb7e63e4e09035ef11b12ebe6e80ef7a5b84d810bd0a23d2f208f830844c9f1c4182569a180aa45ff535e4f
+ opmode wpa2-psk-aes
+ max-authentication-failures 0
+ advertise-ap-name
+ vlan 12
+ auth-server InternalServer
+ rf-band 5.0
+ captive-portal disable
+ dtim-period 2
+ broadcast-filter arp
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ multicast-rate-optimization
+ dynamic-multicast-optimization
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 128
+ wmm-voice-dscp "46"
+ wmm-uapsd-disable
+ dot11r
+ dot11k
+ dot11v
+ denylist
+ %if enable_ftm%
+   %if enable_ftm=Y%
+      ftm-responder-enable
+      advertise-location
+   %endif%
+ %endif% 
+
+!--------Guest WLANs-------------
+
+wlan ssid-profile Guest-Passpoint
+ disable
+ type employee
+ essid Guest-Passpoint
+ opmode wpa2-aes
+ max-authentication-failures 0
+ %if enable_wlan_zones% 
+    %if enable_wlan_zones=Y% 
+      zone GUEST
+     %endif%
+ %endif%
+ advertise-ap-name
+ vlan 19
+ auth-server AS1_#guest#_
+ rf-band 5.0
+ captive-portal disable
+ dtim-period 1
+ broadcast-filter arp
+ enforce-dhcp
+ explicit-ageout-client
+ radius-accounting
+ radius-interim-accounting-interval 15
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 64
+ hotspot-profile Guest-Passpoint
+ dot11r
+ dot11k
+ dot11v
+ auth-pkt-mac-format upper-case delimiter -
+ called-station-id include-ssid delimiter :
+
+wlan ssid-profile GUEST-WIFI
+  %if disable_guest%
+   %if disable_guest=Y%
+      disable
+   %else%
+     enable
+   %endif%
+ %else%
+   enable
+ %endif%
+ type guest
+ essid Guest-WiFi
+ opmode opensystem
+ max-authentication-failures 0
+ %if enable_wlan_zones% 
+    %if enable_wlan_zones=Y% 
+      zone GUEST
+     %endif%
+ %endif%
+ advertise-ap-name
+ vlan 19
+ set-role-pre-auth GUEST-WIFI_#guest#_
+ captive-portal external profile GUEST-WIFI_#guest#_
+ auth-server AS1_#guest#_
+ rf-band all
+ dtim-period 1
+ broadcast-filter arp
+ enforce-dhcp
+ explicit-ageout-client
+ radius-accounting
+ radius-interim-accounting-interval 15
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 15
+ max-clients-threshold 64
+ mac-authentication
+ mac-authentication-delimiter :
+ mac-authentication-upper-case
+ dot11k
+ dot11v
+ denylist
+
+auth-survivability cache-time-out 24
+ 
+wlan external-captive-portal GUEST-WIFI_#guest#_
+ server guest.thd.cloudauth.net
+ port 443
+ url "%redirect_url%"
+ redirect-url "https://www.homedepot.ca/en/home.html?sid=%_site_number%"
+ auth-text ""
+ https
+
+wlan external-captive-portal
+ server localhost
+ port 443
+ url "/"
+ auth-text "Authenticated"
+ server-fail-through
+ auto-whitelist-disable
+ https
+
+!-----Cloud Guest Auth RADSEC
+wlan auth-server AS1_#guest#_
+ radsec
+ ip guest.thd.cloudauth.net
+ port 1812
+ acctport 1813
+ timeout 20
+ nas-id %site_nas_id%_homedepot.com_THDStore%_site_number%
+ rfc3576
+
+!-----HPE GMS RADSEC SERVER
+wlan auth-server thd-naas
+ radsec
+ radsec-keepalive status-server
+ ip %radsec_server_1%
+ nas-ip %static_vc_ip%
+ port 1812
+ acctport 1813
+ timeout 20
+ rfc3576
+
+!-----THD ISE Servers
+wlan auth-server ISE_01
+ ip %ise_server_1%
+ port 1812
+ acctport 1813
+ key %ise_plaintext_key%
+
+wlan auth-server ISE_02
+ ip %ise_server_2%
+ port 1812
+ acctport 1813
+ key %ise_plaintext_key%
+
+blacklist-time 3600
+auth-failure-blacklist-time 3600
+
+ids
+ wireless-containment none
+
+wired-port-profile wired-SetMeUp
+ switchport-mode access
+ allowed-vlan all
+ native-vlan guest
+ no shutdown
+ access-rule-name wired-SetMeUp
+ speed auto
+ duplex auto
+ no poe
+ type guest
+ captive-portal disable
+ no dot1x
+
+wired-port-profile default_wired_port_profile
+ switchport-mode trunk
+ allowed-vlan all
+ native-vlan 1
+ shutdown
+ access-rule-name default_wired_port_profile
+ speed auto
+ duplex full
+ no poe
+ type employee
+ captive-portal disable
+ no dot1x
+
+wired-port-profile trunk
+ switchport-mode trunk
+ allowed-vlan all
+ native-vlan 1
+ no shutdown
+ access-rule-name trunk
+ speed auto
+ duplex auto
+ no poe
+ type employee
+ captive-portal disable
+ no dot1x
+
+enet0-port-profile trunk
+
+!-----create DHCP Scopes for VLAN19, VLAN190-----
+ip dhcp VLAN19
+ server-type local
+ server-vlan 19
+ subnet 192.168.8.0
+ subnet-mask 255.255.248.0
+ lease-time 3600
+%if guest_dns_server% 
+ dns-server %guest_dns_server% 
+%else% 
+ dns-server 10.47.15.10,1.1.1.1
+%endif%
+
+ip dhcp VLAN190
+ server-type Empty
+ server-vlan 190
+ subnet %vlan190_subnet%
+ subnet-mask 255.255.255.252
+
+ip dhcp VLAN13
+ server-type local
+ server-vlan 13
+ subnet 192.168.16.0
+ subnet-mask 255.255.254.0
+ exclude-address 192.168.17.200
+ lease-time 43200
+ dns-server 10.47.15.10,1.1.1.1
+
+ip dhcp VLAN15
+ server-type local
+ server-vlan 15
+ subnet 192.168.20.0
+ subnet-mask 255.255.252.0
+ exclude-address 192.168.23.150
+ lease-time 43200
+ dns-server 10.47.15.10,1.1.1.1
+uplink
+ preemption
+ enforce none
+ failover-internet-pkt-lost-cnt 10
+ failover-internet-pkt-send-freq 30
+ failover-vpn-timeout 180
+
+airgroup
+ disable
+
+airgroupservice airplay
+ disable
+ description AirPlay
+
+airgroupservice airprint
+ disable
+ description AirPrint
+
+clarity
+ inline-sta-stats
+ inline-auth-stats
+ inline-dhcp-stats
+ inline-dns-stats
+
+per-ap-settings %_sys_lan_mac%
+    %if iap_master=1%
+       iap-master
+    %endif%
+    %if advertise_ap_lci=Y%
+       lci-location %ap_lci_lat% %ap_lci_long% 1 %ap_lci_elevation% 1
+       lci-uncertainty 15 15 0.015
+       floor-info-mgmt 1 15 10 0.25
+    %endif%
+    %if mesh% 
+       %if mesh=NONE% 
+          hostname %h_name%
+          mesh-disable
+       %endif%
+       %if mesh=POINT%
+         hostname %h_name%-MESH-POINT
+         mesh-cluster-name arubamesh
+         mesh-cluster-key gdCDUZqBW2DWxJkn
+         enet0-bridging
+       %endif%
+       %if mesh=PORTAL% 
+         hostname %h_name%-MESH-PORTAL
+         mesh-cluster-name arubamesh
+         mesh-cluster-key gdCDUZqBW2DWxJkn
+       %endif%
+    %else%
+          hostname %h_name%
+          mesh-disable
+    %endif%
+    %if enable_wlan_zones=Y%
+      zonename %wlan_zone_name%
+    %endif%
+!
+!
+! TEMPLATE NAME: iap_canada -- VERSION: 32 -- PILOT_BRANCH -- ROLLUP: NWEE-3345-Enable-FTM-LCI-Broadcast

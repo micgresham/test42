@@ -1,0 +1,3559 @@
+!
+! TEMPLATE NAME: FW VERSION 13 6300_dr_midf -- VERSION: 9 -- PILOT_BRANCH
+!
+hostname %_site_type%%_site_number%-MIDF
+allow-unsupported-transceiver
+configuration-lockout central managed
+
+user admin group administrators password plaintext %adminpw%
+user operator group operators password plaintext %operpw%
+
+
+clock timezone %timezone%
+router vrrp enable
+router graceful-restart disable
+%if is_badusb=Y%
+no usb
+%endif%
+ntp server %ntp_server_1% iburst
+ntp enable
+cli-session
+    timeout 5
+!
+!
+!-----Authentication Server-------
+radius-server timeout 10
+radius-server retries 2
+radius-server tracking interval 60
+aaa radius-attribute group radius
+!
+!-------NaaS Mgmt Radsec Servers--------
+radius-server service-type in-access-request
+radius-server host %radsec_server_1% tls tracking enable
+!
+!-------NaaS Mgmt Server Group--------
+aaa group server radius thd-naas
+    server %radsec_server_1% tls
+crypto pki application radsec-client certificate device-identity
+crypto pki ta-profile CPPM-ROOT-CA-THD
+    ta-certificate
+        -----BEGIN CERTIFICATE-----
+        MIIDdzCCAl+gAwIBAgIQN6JSkcG1xpBNhRq7+j3mJjANBgkqhkiG9w0BAQsFADBC
+        MRMwEQYKCZImiZPyLGQBGRYDb3JnMRMwEQYKCZImiZPyLGQBGRYDYW1zMRYwFAYD
+        VQQDEw1hbXMtQUxGREMyLUNBMB4XDTIxMDcyMDE2NDcxM1oXDTI3MDcyMDE2NTcx
+        MVowQjETMBEGCgmSJomT8ixkARkWA29yZzETMBEGCgmSJomT8ixkARkWA2FtczEW
+        MBQGA1UEAxMNYW1zLUFMRkRDMi1DQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
+        AQoCggEBAMs7PFx8Jzi2pdgVyfw6K8lYnj9E93pFh3Sldka34XCp0lJAsYLvAcoI
+        JOldqJbFYGM/yeAcYl8S20DqmerIo8ZwWojq2R/j6T7GdkiGr1CWEVDWZr3ue1qv
+        D0POYsCr7vjn/evfcHs4nEhyQcwbk5xCz2R7gm7T8pBDGMr5FUf8lBiWN5ZuoZJA
+        yK7/XHuKz1kX+CxY4E0IJqM4YjHW2J0eleJpF6ErLkxBhiw5px4RGsM6cL7dM0Re
+        ak5DkUjwPPKJQqlwlGfNfrcmGShT074m7i3MaEaO3br7oZ3PfkTDqw0ZJAMJ6sIT
+        aPTj/NVyttSUtRIMfaMUZITktcLsZWsCAwEAAaNpMGcwEwYJKwYBBAGCNxQCBAYe
+        BABDAEEwDgYDVR0PAQH/BAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYE
+        FGNVAK4pBqfuWIZ959Qwi44MS9FXMBAGCSsGAQQBgjcVAQQDAgEAMA0GCSqGSIb3
+        DQEBCwUAA4IBAQApLtzKDms7AKwkWzCBtktmZsdv11ZqjL3TMvz+mXopxpMQG9Ac
+        XBcN2FHM4JjQGXg/Iav9qkY1Cy2YBCSusxsiIE6oGJrlnDo1t9V2bSYsY32WZ2cK
+        k/gMoOiinKLR8qXGN797qBSZrK0H7jdfDeOPTmDEWDZZWkFN97dXLo1wT9NjawVW
+        dpK58GDFmzKSpIetLdB49wWOu94ASzudqz6okFptaREpQ5CVhslnQmv7AtZn9uuh
+        oPYsR9BY2Mxi6oJ7zzLw1emiDliNjjAK4iUUhKjeN4p3oB2KlospazGioG1+Gm7p
+        hAHdljkCYAiEnyJux6B6mQS8OLfJv6IcQnA5
+        -----END CERTIFICATE-----
+        END_OF_CERTIFICATE
+aaa radius-attribute group thd-naas
+    tunnel-private-group-id value static
+    tunnel-private-group-id request-type both
+    nas-ip-addr request-type authentication
+    nas-ip-addr service-type user-management
+!
+aaa authentication allow-fail-through
+aaa authentication login console group local thd-naas
+aaa authentication login https-server group local thd-naas
+aaa authentication login ssh group local thd-naas
+aaa accounting all-mgmt ssh start-stop group thd-naas
+!
+logging %syslog_server_1%
+ssh server vrf default
+ssh server vrf mgmt
+vsf split-detect mgmt
+vsf secondary-member 2
+vsf member 1
+    type %sw_model1%
+    link 1 1/1/50
+    link 2 1/1/49
+vsf member 2
+    type %sw_model2%
+    link 1 2/1/49
+    link 2 2/1/50
+banner motd #
+No unauthorized changes should be made during store operational hours.
+All after hour changes should go through the change notification process.
+Please contact The Network Operation Center (x. 10110) or The Store
+Network Engineering Team if you have any questions.#
+banner exec #
+*******************************************************************************
+                                  WARNING:
+           THIS SYSTEM IS PRIVATE PROPERTY FOR THE USE OF THE COMPANY
+                       **** AUTHORIZED USERS ONLY! ****
+Any use of this computer system shall be deemed to be express consent
+to monitoring of such use and to such additional monitoring as may be necessary
+to identify any unauthorized user. The system administrator or other
+representatives of the system owner may monitor system use at any time without
+further notice or consent. Unauthorized use of this system and any other
+criminal conduct revealed by such use is subject to disclosure to law
+enforcement officials and prosecution to the full extent of the law.
+Unauthorized access is a violation of state and federal, civil and criminal
+laws.
+*******************************************************************************#
+object-group ip address CROWDSTRIKE1
+    10 13.56.121.58
+    20 13.56.127.239
+    30 13.57.54.63
+    40 4.67.17.131
+    50 50.18.194.39
+    60 50.18.198.237
+    70 52.52.117.52
+    80 52.52.119.33
+    90 52.52.149.168
+    100 52.52.239.58
+    110 52.53.77.89
+    120 52.8.134.130
+    130 52.8.141.1
+    140 52.8.160.82
+    150 52.8.172.89
+    160 52.8.173.58
+    170 52.8.19.75
+    180 52.8.32.113
+    190 52.8.45.162
+    200 52.8.5.240
+    210 52.8.54.244
+    220 52.8.61.206
+    230 52.9.104.148
+    240 52.9.212.176
+    250 52.9.77.209
+    260 52.9.82.94
+    270 52.9.87.98
+    280 54.183.105.3
+    290 54.183.120.141
+    300 54.183.122.156
+    310 54.183.135.80
+    320 54.183.140.32
+    330 54.183.142.105
+    340 54.183.148.116
+    350 54.183.148.43
+    360 54.183.215.154
+    370 54.183.234.42
+    380 54.183.24.162
+    390 54.183.252.86
+    400 54.183.34.154
+    410 54.183.39.68
+    420 54.183.51.31
+    430 54.183.51.69
+    440 54.183.52.221
+    450 54.193.117.199
+    460 54.193.27.226
+    470 54.193.29.47
+    480 54.193.67.98
+    490 54.193.86.245
+    500 54.193.87.57
+    510 54.193.90.171
+    520 54.193.93.19
+    530 54.215.131.232
+    540 54.215.154.80
+    550 54.215.169.199
+    560 54.215.169.38
+    570 54.215.170.42
+    580 54.215.176.108
+    590 54.215.183.157
+    600 54.215.226.55
+object-group ip address CROWDSTRIKE2
+    10 54.219.140.50
+    20 54.219.141.250
+    30 54.219.145.181
+    40 54.219.147.253
+    50 54.219.148.161
+    60 54.219.149.89
+    70 54.219.149.92
+    80 54.219.151.1
+    90 54.219.151.27
+    100 54.219.153.248
+    110 54.219.158.53
+    120 54.219.159.84
+    130 54.219.161.141
+    140 54.219.179.25
+    150 54.241.138.180
+    160 54.241.146.67
+    170 54.241.148.127
+    180 54.241.150.134
+    190 54.241.161.242
+    200 54.241.161.60
+    210 54.241.162.180
+    220 54.241.162.64
+    230 54.241.164.212
+    240 54.241.175.140
+    250 54.241.175.52
+    260 54.241.179.52
+    270 54.241.181.242
+    280 54.241.181.78
+    290 54.241.182.78
+    300 54.241.183.151
+    310 54.241.183.229
+    320 54.241.183.232
+    330 54.241.184.161
+    340 54.241.185.201
+    350 54.241.186.124
+    360 54.241.197.58
+    370 54.67.105.202
+    380 54.67.108.17
+    390 54.67.114.188
+    400 54.67.119.89
+    410 54.67.122.238
+    420 54.67.123.150
+    430 54.67.123.234
+    440 54.67.24.156
+    450 54.67.26.184
+    460 54.67.33.233
+    470 54.67.4.108
+    480 54.67.41.192
+    490 54.67.48.56
+    500 54.67.5.136
+    510 54.67.51.32
+    520 54.67.54.116
+    530 54.67.6.201
+    540 54.67.68.88
+    550 54.67.72.218
+    560 54.67.78.134
+    570 54.67.92.206
+    580 54.67.96.255
+    590 54.67.99.247
+    600 52.43.73.53
+object-group ip address CROWDSTRIKE3
+    10 54.219.112.243
+    20 54.219.115.12
+    30 54.219.137.54
+    40 35.164.23.230
+object-group ip address CYBERARK_PSM_RDP
+    10 10.69.129.64/27
+    20 10.77.129.64/27
+    30 10.69.107.0/27
+    40 10.77.107.0/27
+    50 10.69.129.128/27
+    60 10.77.129.128/27
+    70 10.69.129.192/27
+    80 10.77.129.192/27
+    90 10.69.102.128/27
+    100 10.77.102.128/27
+    110 10.69.130.0/27
+    120 10.77.130.0/27
+object-group ip address DHCP_SERVER
+    10 151.140.3.18
+    20 151.140.48.237
+    30 151.140.76.177
+    40 151.140.107.119
+    50 255.255.255.255
+%if acl_dhcp_server_1%
+    60 %acl_dhcp_server_1%
+%endif%
+%if acl_dhcp_server_2%
+    70 %acl_dhcp_server_2%
+%endif%
+%if acl_dhcp_server_3%
+    80 %acl_dhcp_server_3%
+%endif%
+object-group ip address DNS_SERVER
+    10 165.130.1.9
+    20 151.140.45.135
+    30 151.140.45.136
+    40 151.140.45.18
+    50 165.130.128.196
+    60 %dns_server_primary%
+object-group ip address DNS_SERVER_18-1
+    10 165.130.1.9
+    20 151.140.45.135
+    30 151.140.45.136
+object-group ip address KMS_SERVER
+    10 151.140.0.177
+    20 151.140.104.251
+object-group ip address KMS_SERVER_18-1
+    10 151.140.0.177
+    20 151.140.104.251
+object-group ip address MANAGEMENT_POINT
+    10 151.140.77.1
+object-group ip address MOZY_BACKUPS
+    10 65.44.121.0/24
+    20 74.112.144.0/21
+    30 173.243.48.0/20
+    40 193.120.226.0/24
+    50 193.120.29.220/30
+    60 193.120.29.224/30
+object-group ip address NTP_SERVER
+    10 165.130.1.7
+object-group ip address NTP_SERVER_18-1
+    10 165.130.1.7
+object-group ip address RUBRIK_BACKUPS
+    10 10.72.64.0/24
+    20 10.64.64.0/24
+object-group ip address SCCM_DP_18-1
+    10 151.140.2.235
+    20 151.140.2.248
+    30 151.140.48.248
+    40 151.140.48.249
+    50 151.140.76.111
+    60 151.140.78.5
+    70 151.140.79.143
+    80 151.140.107.38
+    90 151.140.50.130
+object-group ip address SCCM_MP_18-1
+    10 151.140.2.234
+    20 151.140.2.245
+    30 151.140.2.246
+    40 151.140.48.247
+    50 151.140.48.246
+    60 151.140.76.109
+    70 151.140.76.112
+    80 151.140.76.113
+    90 151.140.77.1
+    100 151.140.107.48
+    110 151.140.107.49
+object-group ip address SCCM_SERVER
+    10 151.140.2.234
+    20 151.140.2.235
+    30 151.140.2.245
+    40 151.140.2.246
+    50 151.140.2.248
+    60 151.140.48.247
+    70 151.140.48.246
+    80 151.140.48.248
+    90 151.140.48.249
+    100 151.140.49.83
+    110 151.140.49.95
+    120 151.140.76.109
+    130 151.140.76.110
+    140 151.140.76.111
+    150 151.140.76.112
+    160 151.140.76.113
+    170 151.140.76.173
+    180 151.140.76.175
+    190 151.140.78.5
+    200 151.140.79.143
+    210 151.140.107.38
+    220 151.140.107.48
+    230 151.140.107.49
+    240 151.140.50.130
+    250 172.19.80.16
+    260 151.140.85.216
+%if acl_sccm_server_1%
+    270 %acl_sccm_server_1%
+%endif%
+%if acl_sccm_server_2%
+    280 %acl_sccm_server_2%
+%endif%
+%if acl_sccm_server_3%
+    290 %acl_sccm_server_3%
+%endif%
+    300 10.66.200.0/25
+    310 10.74.200.0/25
+    320 10.66.2.0/26
+    330 10.74.2.0/26
+    340 10.66.129.128/26
+    350 10.74.129.128/26
+object-group ip address SCCM_SERVER_18-1
+    10 10.66.200.0/25
+    20 10.74.200.0/25
+    30 10.66.2.0/26
+    40 10.74.2.0/26
+    50 10.66.129.128/26
+    60 10.74.129.128/26
+    70 151.140.76.175
+    80 151.140.49.95
+    90 165.130.174.46
+object-group ip address SCCM_SERVER_2
+    10 10.66.17.7
+    20 10.66.17.8
+    30 10.66.17.9
+    40 10.66.17.10
+    50 10.66.17.11
+object-group ip address SCCM_SERVER_3
+    10 10.66.17.15
+    20 10.66.17.16
+    30 10.66.17.17
+object-group ip address SCCM_SUP_18-1
+    10 151.140.49.83
+    20 151.140.49.95
+    30 151.140.76.110
+    40 151.140.76.173
+    50 151.140.76.175
+object-group ip address SCCM_SortingHat_19-1
+    10 165.130.131.124
+    20 165.130.181.48
+    30 165.130.228.45
+    40 165.130.235.45
+    50 151.140.85.216
+object-group ip address SDWAN-INTERNET-HUBS
+    10 207.11.17.13
+    20 207.11.17.14
+    30 207.11.17.15
+    40 207.11.17.16
+    50 207.11.17.17
+    60 207.11.17.18
+    70 207.11.17.19
+    80 207.11.17.20
+    90 207.11.48.13
+    100 207.11.48.14
+    110 207.11.48.15
+    120 207.11.48.16
+    130 207.11.48.17
+    140 207.11.48.18
+    150 207.11.48.19
+    160 207.11.48.20
+    170 207.11.71.32/29
+    180 207.11.72.32/29
+    190 207.11.73.32/29
+    200 207.11.74.32/29
+    210 207.11.75.32/29
+object-group ip address SYMANTEC
+    10 151.140.2.1
+    20 151.140.3.90
+    30 151.140.3.91
+    40 151.140.12.154
+    50 151.140.12.155
+    60 151.140.12.156
+    70 151.140.12.157
+    80 151.140.12.158
+    90 151.140.67.11
+    100 151.140.77.58
+    110 151.140.77.59
+    120 151.140.101.134
+    130 151.140.101.135
+    140 151.140.101.136
+    150 151.140.101.137
+    160 151.140.101.138
+object-group ip address TACACS
+    10 151.140.107.1
+    20 151.140.2.230
+object-group ip address VPN_CLIENTS
+    10 172.19.174.0/24
+    20 172.19.175.64/26
+    30 172.19.190.0/24
+    40 172.19.191.64/26
+    50 172.19.206.0/24
+    60 172.19.207.64/26
+    70 172.19.222.0/24
+    80 172.19.223.64/26
+object-group ip address VPN_CLIENTS_18-1
+    10 172.19.174.0/24
+    20 172.19.175.64/26
+    30 172.19.190.0/24
+    40 172.19.191.64/26
+    50 172.19.206.0/24
+    60 172.19.207.64/26
+    70 172.19.222.0/24
+    80 172.19.223.64/26
+object-group ip address ZEBRACONNECTSSL
+    10 104.43.137.98
+    20 40.77.86.240
+    30 20.114.141.221
+    40 20.110.124.146
+    50 40.122.109.203
+    60 40.122.111.126
+    70 52.165.156.238
+    80 40.122.254.103
+    90 20.122.2.233
+    100 20.114.197.183
+    110 40.122.50.157
+    120 40.75.114.173
+    130 13.86.24.118
+    140 54.215.171.160
+    150 40.69.147.36
+    160 104.43.220.82
+    170 20.109.102.12
+    180 40.77.110.129
+    190 13.67.199.39
+    200 52.184.158.53
+    210 20.98.185.109
+    220 52.162.199.50
+    230 20.75.44.109
+    240 20.98.185.177
+    250 20.98.179.254
+    260 20.62.48.223
+    270 20.221.100.193
+    280 20.62.81.90
+    290 20.221.91.35
+    300 52.159.118.20
+object-group ip address ZEBRAMQTT
+    10 52.162.199.50
+    20 52.162.199.50
+    30 20.75.44.109
+    40 20.98.185.177
+    50 20.98.179.254
+    60 20.62.48.223
+object-group ip address ZEBRASIGNALCTRL
+    10 52.184.152.221
+    20 104.43.135.25
+    30 104.43.130.122
+    40 168.61.186.80
+    50 52.173.132.150
+    60 20.119.234.52
+    70 20.110.147.147
+    80 23.99.231.96
+    90 40.77.96.54
+    100 52.165.152.237
+    110 52.165.153.142
+    120 52.184.158.232
+object-group port PORTS-1025-139-445-135
+    10 eq 1025
+    20 eq 139
+    30 eq 445
+    40 eq 135
+object-group port PORTS-1025-49252-49253
+    10 eq 1025
+    20 range 49252 49253
+object-group port PORTS-1034-1050-1303-1321-22-443-80-5631
+    10 eq 1034
+    20 eq 1050
+    30 eq 1303
+    40 eq 1321
+    50 eq 22
+    60 eq 443
+    70 eq 80
+    80 eq 5631
+object-group port PORTS-1077-1496-1662-20000-53-137-123-514-69-5632
+    10 eq 1077
+    20 eq 1496
+    30 eq 1662
+    40 eq 20000
+    50 eq 53
+    60 eq 137
+    70 eq 123
+    80 eq 514
+    90 eq 69
+    100 eq 5632
+object-group port PORTS-1093-1067-1064
+    10 eq 1093
+    20 eq 1067
+    30 eq 1064
+object-group port PORTS-1109-1367
+    10 eq 1109
+    20 eq 1367
+object-group port PORTS-12000-12020-12030-12060-12070
+    10 eq 12000
+    20 eq 12020
+    30 eq 12030
+    40 eq 12060
+    50 eq 12070
+object-group port PORTS-12020-12030-12060-12070-FTP
+    10 eq 12020
+    20 eq 12030
+    30 eq 12060
+    40 eq 12070
+    50 eq 21
+object-group port PORTS-12090-12100
+    10 eq 12090
+    20 eq 12100
+object-group port PORTS-135-139-445
+    10 eq 135
+    20 eq 139
+    30 eq 445
+object-group port PORTS-137-445-38293-2967-139-4300
+    10 eq 137
+    20 eq 445
+    30 eq 38293
+    40 eq 2967
+    50 eq 139
+    60 eq 4300
+object-group port PORTS-139-445
+    10 eq 139
+    20 eq 445
+object-group port PORTS-139-9100-WWW-8080
+    10 eq 139
+    20 eq 9100
+    30 eq 80
+    40 eq 8080
+object-group port PORTS-1533-1503-8081-554
+    10 eq 1533
+    20 eq 1503
+    30 eq 8081
+    40 eq 554
+object-group port PORTS-16992-16995
+    10 range 16992 16995
+object-group port PORTS-2000-4445-5631-8085-81-2187
+    10 eq 2000
+    20 eq 4445
+    30 eq 5631
+    40 eq 8085
+    50 eq 81
+    60 eq 2187
+object-group port PORTS-2003-2378-4001
+    10 eq 2003
+    20 eq 2378
+    30 eq 4001
+object-group port PORTS-2697-2967
+    10 eq 2697
+    20 eq 2967
+object-group port PORTS-2967-38293
+    10 eq 2967
+    20 eq 38293
+object-group port PORTS-3268-3269-9389-49204-49206
+    10 eq 3268
+    20 eq 3269
+    30 eq 9389
+    40 eq 49204
+    50 eq 49206
+object-group port PORTS-3269-9389-49204-49206
+    10 eq 3269
+    20 eq 9389
+    30 eq 49204
+    40 eq 49206
+object-group port PORTS-3389-5986
+    10 eq 3389
+    20 eq 5986
+object-group port PORTS-389-22-139-138-137-135-123-161
+    10 eq 389
+    20 eq 22
+    30 eq 139
+    40 eq 138
+    50 eq 137
+    60 eq 135
+    70 eq 123
+    80 eq 161
+object-group port PORTS-4011-TFTP
+    10 eq 4011
+    20 eq 69
+object-group port PORTS-427-1900
+    10 eq 427
+    20 eq 1900
+object-group port PORTS-445-139
+    10 eq 445
+    20 eq 139
+object-group port PORTS-49254-49201-1494-135
+    10 eq 49254
+    20 eq 49201
+    30 eq 1494
+    40 eq 135
+object-group port PORTS-5005-6010-554-5010
+    10 eq 5005
+    20 eq 6010
+    30 eq 554
+    40 eq 5010
+    50 eq 554
+    60 eq 5010
+object-group port PORTS-5050-5560-6010-7005-8029-8089-9541-12345-49170
+    10 eq 5050
+    20 eq 5560
+    30 eq 6010
+    40 eq 7005
+    50 eq 8029
+    60 eq 8089
+    70 eq 9541
+    80 eq 12345
+    90 eq 49170
+object-group port PORTS-5060-5061-5063-443
+    10 eq 5060
+    20 eq 5061
+    30 eq 5063
+    40 eq 443
+object-group port PORTS-5985-5986
+    10 range 5985 5986
+object-group port PORTS-5985-MSRPC
+    10 eq 5985
+    20 eq 135
+object-group port PORTS-6100-6101-9100
+    10 eq 6100
+    20 eq 6101
+    30 eq 9100
+object-group port PORTS-623-664
+    10 eq 623
+    20 eq 664
+object-group port PORTS-623-664-5986-16992-16993-16994-16995
+    10 eq 623
+    20 eq 664
+    30 eq 5986
+    40 range 16992 16995
+object-group port PORTS-7775-137-138
+    10 eq 7775
+    20 eq 137
+    30 eq 138
+    40 eq 7775
+    50 eq 137
+    60 eq 138
+object-group port PORTS-7775-137-139-445-MSRPC-2701-2702-3389-5985-5986
+    10 eq 7775
+    20 eq 137
+    30 eq 139
+    40 eq 445
+    50 eq 135
+    60 range 2701 2702
+    70 eq 3389
+    80 range 5985 5986
+object-group port PORTS-8014-9090-8443
+    10 eq 8014
+    20 eq 9090
+    30 eq 8443
+object-group port PORTS-8019-8008
+    10 eq 8019
+    20 eq 8008
+object-group port PORTS-8019-8012
+    10 eq 8019
+    20 eq 8012
+object-group port PORTS-8077-8079
+    10 eq 8077
+    20 eq 8079
+object-group port PORTS-8080-3128
+    10 eq 8080
+    20 eq 3128
+object-group port PORTS-8080-9898
+    10 eq 8080
+    20 eq 9898
+object-group port PORTS-8106-8006-8406-8126-8026-8426-51600
+    10 eq 8106
+    20 eq 8006
+    30 eq 8406
+    40 eq 8126
+    50 eq 8026
+    60 eq 8426
+    70 eq 51600
+object-group port PORTS-8126-8426-51600
+    10 eq 8126
+    20 eq 8426
+    30 eq 51600
+object-group port PORTS-88-123-137-138-389-445-464
+    10 eq 88
+    20 eq 123
+    30 eq 137
+    40 eq 138
+    50 eq 389
+    60 eq 445
+    70 eq 464
+object-group port PORTS-88-135-139-389-445-464-636
+    10 eq 88
+    20 eq 135
+    30 eq 139
+    40 eq 389
+    50 eq 445
+    60 eq 464
+    70 eq 636
+object-group port PORTS-88-389-49201-49204-3268
+    10 eq 88
+    20 eq 389
+    30 eq 49201
+    40 eq 49204
+    50 eq 3268
+object-group port PORTS-88-8019-49204-445-139-1090-1025-3268
+    10 eq 88
+    20 eq 8019
+    30 eq 49204
+    40 eq 445
+    50 eq 139
+    60 eq 1090
+    70 eq 1025
+    80 eq 3268
+object-group port PORTS-88-MSRPC-139-389-445-464-636
+    10 eq 88
+    20 eq 135
+    30 eq 139
+    40 eq 389
+    50 eq 445
+    60 eq 464
+    70 eq 636
+object-group port PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464
+    10 eq 88
+    20 eq 123
+    30 eq 137
+    40 eq 138
+    50 eq 389
+    60 eq 445
+    70 eq 464
+object-group port PORTS-9080-5050
+    10 eq 9080
+    20 eq 5050
+object-group port PORTS-9220-16398
+    10 eq 9220
+    20 eq 16398
+object-group port PORTS-9912-9902
+    10 eq 9912
+    20 eq 9902
+object-group port PORTS-BOOTPC-BOOTPS-TFTP-135-4011
+    10 eq 67
+    20 eq 68
+    30 eq 69
+    40 eq 135
+    50 eq 4011
+object-group port PORTS-BOOTPS-BOOTPC
+    10 eq 67
+    20 eq 68
+object-group port PORTS-DNS-88-MSRPC-139-389-445-464-636-3268
+    10 eq 53
+    20 eq 88
+    30 eq 135
+    40 eq 139
+    50 eq 389
+    60 eq 445
+    70 eq 464
+    80 eq 636
+    90 eq 3268
+object-group port PORTS-DNS-DAYTIME
+    10 eq 53
+    20 eq 13
+object-group port PORTS-FTP-2010-5000
+    10 eq 21
+    20 eq 2010
+    30 eq 5000
+object-group port PORTS-FTPD-FTP-TELNET-WWW-554-1420-1422-1439-5005-5010
+    10 eq 20
+    20 eq 21
+    30 eq 23
+    40 eq 80
+    50 eq 554
+    60 eq 1420
+    70 eq 1422
+    80 eq 1439
+    90 eq 5005
+    100 eq 5010
+object-group port PORTS-MSRPC-139-445-2701-2702
+    10 eq 135
+    20 eq 139
+    30 eq 445
+    40 range 2701 2702
+object-group port PORTS-MSRPC-445-WWW
+    10 eq 135
+    20 eq 445
+    30 eq 80
+object-group port PORTS-NETBIOS-NS-NETBIOS-DGM
+    10 eq 137
+    20 eq 138
+object-group port PORTS-NTP-DNS
+    10 eq 123
+    20 eq 53
+object-group port PORTS-NTP-SNMP-NETBIOS-NS-DGM-DNS-BOOTPS-389-1311-2000-88
+    10 eq 123
+    20 eq 161
+    30 eq 137
+    40 eq 67
+    50 eq 389
+    60 eq 1311
+    70 eq 2000
+    80 eq 88
+object-group port PORTS-TELNET-30010
+    10 eq 23
+    20 eq 30010
+object-group port PORTS-TELNET-4004-137-10010-10012-10014
+    10 eq 23
+    20 eq 4004
+    30 eq 137
+    40 eq 10010
+    50 eq 10012
+    60 eq 10014
+object-group port PORTS-TFTP-111-BOOTPC-4004
+    10 eq 69
+    20 eq 111
+    30 eq 68
+    40 eq 4004
+object-group port PORTS-TFTP-2000-6969
+    10 eq 69
+    20 eq 2000
+    30 eq 6969
+object-group port PORTS-WWW-1109-1367
+    10 eq 80
+    20 eq 1109
+    30 eq 1367
+object-group port PORTS-WWW-111-DNS-13-9100-88-8080-524-445-443
+    10 eq 80
+    20 eq 111
+    30 eq 53
+    40 eq 13
+    50 eq 9100
+    60 eq 88
+    70 eq 8080
+    80 eq 524
+    90 eq 445
+    100 eq 443
+object-group port PORTS-WWW-12120-22-500-TELNET
+    10 eq 80
+    20 eq 12120
+    30 eq 22
+    40 eq 500
+    50 eq 23
+object-group port PORTS-WWW-13150
+    10 eq 80
+    20 eq 13150
+object-group port PORTS-WWW-1433
+    10 eq 80
+    20 eq 1433
+object-group port PORTS-WWW-443
+    10 eq 80
+    20 eq 443
+object-group port PORTS-WWW-443-10123
+    10 eq 80
+    20 eq 443
+    30 eq 10123
+object-group port PORTS-WWW-443-445
+    10 eq 80
+    20 eq 443
+    30 eq 445
+object-group port PORTS-WWW-443-64084-8082-8443-8444
+    10 eq 80
+    20 eq 443
+    30 eq 64084
+    40 eq 8082
+    50 eq 8443
+    60 eq 8444
+object-group port PORTS-WWW-445
+    10 eq 80
+    20 eq 445
+object-group port PORTS-WWW-8080
+    10 eq 80
+    20 eq 8080
+object-group port PORTS-ZEBRASIGNALCTRL_TCP
+    10 eq 4200
+    20 eq 4300
+    30 eq 4400
+    40 eq 4500
+    50 eq 4600
+    60 eq 4700
+    70 eq 443
+object-group port PORTS-ZEBRASIGNALCTRL_UDP
+    10 range 4200 4224
+    20 range 4300 4324
+    30 range 4400 4424
+    40 range 4500 4524
+    50 range 4600 4624
+    60 range 4700 4724
+object-group port PORTS-ZEBRA_SSL_TCP
+    10 eq 443
+    20 eq 8443
+    30 eq 1883
+    40 eq 8883
+    50 eq 9443
+object-group ip address AZURE_SDWAN_CONTROL
+    10 13.64.211.141
+    20 20.185.225.46
+    30 20.115.18.203
+    40 40.83.146.205
+    50 20.115.6.223
+access-list ip CONTROLPLANE
+    10 permit tcp 192.168.112.1 any eq 22
+    20 permit tcp 207.11.32.71 any eq 22
+    30 permit tcp 207.11.32.85 any eq 22
+    40 permit tcp 207.11.118.1 any eq 22
+    50 permit tcp 207.11.32.94 any eq 22
+    60 permit tcp 207.11.32.88 any eq 22
+    70 permit tcp 207.11.32.91 any eq 22
+    80 permit tcp 207.11.37.1 any eq 22
+    90 permit tcp 192.168.128.1 any eq 22
+    100 permit tcp 172.29.191.0/255.255.255.192 any eq 22
+    110 permit tcp 172.29.197.0/255.255.255.192 any eq 22
+    120 permit tcp 10.128.0.45/255.128.7.255 any eq 22
+    130 permit tcp 10.128.0.73/255.128.7.255 any eq 22
+    140 permit tcp 10.64.0.0/255.248.0.0 any eq 22             
+    150 permit tcp 10.72.0.0/255.248.0.0 any eq 22
+    160 permit tcp 10.69.99.0/255.255.255.0 any eq 22
+    170 permit tcp 10.77.99.0/255.255.255.0 any eq 22
+    180 permit tcp 151.140.0.0/255.255.0.0 any eq 22
+    190 permit tcp 165.130.0.0/255.255.0.0 any eq 22
+    200 permit tcp 172.18.0.0/255.255.0.0 any eq 22
+    210 permit tcp 172.19.174.0/255.255.255.0 any eq 22
+    220 permit tcp 172.19.175.64/255.255.255.192 any eq 22
+    230 permit tcp 172.19.190.0/255.255.255.0 any eq 22
+    240 permit tcp 172.19.191.64/255.255.255.192 any eq 22
+    250 permit tcp 172.19.206.0/255.255.255.0 any eq 22
+    260 permit tcp 172.19.207.64/255.255.255.192 any eq 22
+    270 permit tcp 172.19.222.0/255.255.255.0 any eq 22
+    280 permit tcp 172.19.223.64/255.255.255.192 any eq 22
+    290 permit tcp 172.19.8.0/255.255.254.0 any eq 22
+    300 permit tcp 172.21.128.0/255.255.192.0 any eq 22
+    310 permit tcp 172.21.192.0/255.255.192.0 any eq 22
+    320 permit tcp 172.26.6.0/255.255.255.0 any eq 22
+    330 permit tcp 172.26.63.0/255.255.255.0 any eq 22
+    340 permit tcp 192.168.50.0/255.255.255.248 any eq 22
+    350 permit tcp 192.168.80.0/255.255.252.0 any eq 22
+    360 permit tcp 207.11.12.0/255.255.255.0 any eq 22
+    370 permit tcp 207.11.21.0/255.255.255.0 any eq 22         
+    380 permit tcp 207.11.20.64/255.255.255.192 any eq 22
+    390 permit tcp 207.11.33.64/255.255.255.192 any eq 22
+    400 deny tcp any any eq 22 count
+    1000 permit any any any count
+access-list ip FW-VLAN30-IN-CSR
+    10 permit tcp any any established count
+    20 permit any 10.128.6.128/255.128.7.128 10.17.64.0/255.255.254.0 count
+    30 permit any 10.128.6.128/255.128.7.128 10.16.92.0/255.255.254.0 count
+    40 deny tcp 10.128.6.128/255.128.7.128 10.128.0.1/255.128.7.255 group PORTS-8080-3128 log count
+    50 deny tcp 10.128.6.128/255.128.7.128 10.128.0.41/255.128.7.255 group PORTS-8080-3128 log count
+    60 deny tcp 10.128.6.128/255.128.7.128 10.128.0.45/255.128.7.255 group PORTS-8080-3128 log count
+    70 permit tcp 10.128.6.128/255.128.7.128 CROWDSTRIKE1 eq 443 count
+    80 permit tcp 10.128.6.128/255.128.7.128 CROWDSTRIKE2 eq 443 count
+    90 permit tcp 10.128.6.128/255.128.7.128 CROWDSTRIKE3 eq 443 count
+    100 permit tcp 10.128.6.128/255.128.7.128 192.168.77.5 eq 8080 count
+    110 permit tcp 10.128.6.128/255.128.7.128 10.64.170.182 eq 8080 count
+    120 permit tcp 10.128.6.128/255.128.7.128 10.77.96.206/255.255.255.254 group PORTS-8080-9898 count
+    130 permit tcp 10.128.6.128/255.128.7.128 10.77.96.208/255.255.255.254 group PORTS-8080-9898 count
+    140 permit tcp 10.128.6.128/255.128.7.128 10.77.96.210 group PORTS-8080-9898 count
+    150 permit tcp 10.128.6.128/255.128.7.128 10.69.96.198/255.255.255.254 group PORTS-8080-9898 count
+    160 permit tcp 10.128.6.128/255.128.7.128 10.69.96.200/255.255.255.254 group PORTS-8080-9898 count
+    170 permit tcp 10.128.6.128/255.128.7.128 10.69.96.202/255.255.255.254 group PORTS-8080-9898 count
+    180 permit tcp 10.128.6.128/255.128.7.128 10.69.96.204/255.255.255.254 group PORTS-8080-9898 count
+    190 permit tcp 10.128.6.128/255.128.7.128 10.69.96.206/255.255.255.254 group PORTS-8080-9898 count
+    200 permit tcp 10.128.6.128/255.128.7.128 10.77.96.198/255.255.255.254 group PORTS-8080-9898 count
+    210 permit tcp 10.128.6.128/255.128.7.128 10.77.96.200/255.255.255.254 group PORTS-8080-9898 count
+    220 permit tcp 10.128.6.128/255.128.7.128 10.77.96.202/255.255.255.254 group PORTS-8080-9898 count
+    230 permit tcp 10.128.6.128/255.128.7.128 10.77.96.204/255.255.255.254 group PORTS-8080-9898 count
+    240 permit tcp 10.128.6.128/255.128.7.128 151.140.102.24/255.255.255.248 group PORTS-8080-9898 count
+    250 permit tcp 10.128.6.128/255.128.7.128 151.140.102.32/255.255.255.254 group PORTS-8080-9898 count
+    260 permit tcp 10.128.6.128/255.128.7.128 151.140.50.132/255.255.255.252 group PORTS-8080-9898 count
+    270 permit tcp 10.128.6.128/255.128.7.128 151.140.50.136/255.255.255.252 group PORTS-8080-9898 count
+    280 permit tcp 10.128.6.128/255.128.7.128 151.140.50.140 group PORTS-8080-9898 count
+    290 permit tcp 10.128.6.128/255.128.7.128 165.130.167.250 group PORTS-WWW-443 count
+    300 permit tcp 10.128.6.128/255.128.7.128 165.130.175.250 group PORTS-WWW-443 count
+    310 permit tcp 10.128.6.128/255.128.7.128 151.140.4.11 group PORTS-8077-8079 count
+    320 permit tcp 10.128.6.128/255.128.7.128 151.140.4.12 group PORTS-8077-8079 count
+    330 permit tcp 10.128.6.128/255.128.7.128 151.140.4.13 group PORTS-8077-8079 count
+    340 permit tcp 10.128.6.128/255.128.7.128 151.140.4.14 group PORTS-8077-8079 count
+    350 permit tcp 10.128.6.128/255.128.7.128 151.140.4.15 group PORTS-8077-8079 count
+    360 permit tcp 10.128.6.128/255.128.7.128 151.140.4.16 group PORTS-8077-8079 count
+    370 permit tcp 10.128.6.128/255.128.7.128 151.140.4.17 group PORTS-8077-8079 count
+    380 permit tcp 10.128.6.128/255.128.7.128 151.140.4.19 group PORTS-8077-8079 count
+    390 permit tcp 10.128.6.128/255.128.7.128 151.140.4.20 group PORTS-8077-8079 count
+    400 permit tcp 10.128.6.128/255.128.7.128 151.140.4.21 group PORTS-8077-8079 count
+    410 permit tcp 10.128.6.128/255.128.7.128 151.140.28.11 group PORTS-8077-8079 count
+    420 permit tcp 10.128.6.128/255.128.7.128 151.140.28.12 group PORTS-8077-8079 count
+    430 permit tcp 10.128.6.128/255.128.7.128 151.140.28.13 group PORTS-8077-8079 count
+    440 permit tcp 10.128.6.128/255.128.7.128 151.140.28.14 group PORTS-8077-8079 count
+    450 permit tcp 10.128.6.128/255.128.7.128 151.140.28.15 group PORTS-8077-8079 count
+    460 permit tcp 10.128.6.128/255.128.7.128 151.140.28.16 group PORTS-8077-8079 count
+    470 permit tcp 10.128.6.128/255.128.7.128 151.140.28.17 group PORTS-8077-8079 count
+    480 permit tcp 10.128.6.128/255.128.7.128 151.140.28.24 group PORTS-8077-8079 count
+    490 permit tcp 10.128.6.128/255.128.7.128 151.140.28.25 group PORTS-8077-8079 count
+    500 permit tcp 10.128.6.128/255.128.7.128 151.140.4.18 group PORTS-8077-8079 count
+    510 permit tcp 10.128.6.128/255.128.7.128 151.140.69.18 group PORTS-8077-8079 count
+    520 permit tcp 10.128.6.128/255.128.7.128 151.140.79.27 group PORTS-WWW-445 count
+    530 permit udp 10.128.6.128/255.128.7.128 any eq 1985 count
+    540 permit udp 10.128.6.128/255.128.7.128 any eq 161 count
+    550 permit udp any any group PORTS-BOOTPS-BOOTPC count
+    560 permit udp 10.128.6.128/255.128.7.128 165.130.1.1 eq 162 count
+    570 permit icmp 10.128.6.128/255.128.7.128 10.128.0.1/255.128.7.255 count
+    580 permit icmp 10.128.6.128/255.128.7.128 10.128.0.45/255.128.7.255 count
+    590 permit udp 10.128.6.128/255.128.7.128 10.128.0.1/255.128.7.255 group PORTS-NTP-DNS count
+    600 permit udp 10.128.6.128/255.128.7.128 10.128.0.49/255.128.7.255 group PORTS-NTP-DNS count
+    610 permit tcp 10.128.6.128/255.128.7.128 10.128.0.1/255.128.7.255 eq 53 count
+    620 permit tcp 10.128.6.128/255.128.7.128 10.128.0.49/255.128.7.255 eq 53 count
+    630 permit tcp 10.128.6.128/255.128.7.128 10.128.0.1/255.128.7.255 group PORTS-WWW-12120-22-500-TELNET count
+    640 permit tcp 10.128.6.128/255.128.7.128 10.128.0.45/255.128.7.255 eq 80 count
+    650 permit tcp 10.128.6.128/255.128.7.128 10.128.0.49/255.128.7.255 group PORTS-WWW-13150 count
+    660 permit tcp 10.128.6.128/255.128.7.128 10.128.0.52/255.128.7.255 eq 80 count
+    670 permit tcp 10.128.6.128/255.128.7.128 10.128.0.53/255.128.7.255 eq 80 count
+    680 permit tcp 10.128.6.128/255.128.7.128 165.130.163.1 eq 80 count
+    690 permit tcp 10.128.6.128/255.128.7.128 165.130.171.1 eq 80 count
+    700 permit tcp 10.128.6.128/255.128.7.128 165.130.179.1 eq 80 count
+    710 permit tcp 10.128.6.128/255.128.7.128 165.130.166.182 eq 80 count
+    720 permit tcp 10.128.6.128/255.128.7.128 165.130.174.182 eq 80 count
+    730 permit tcp 10.128.6.128/255.128.7.128 165.130.166.80 eq 443 count
+    740 permit tcp 10.128.6.128/255.128.7.128 165.130.174.80 eq 443 count
+    750 permit tcp 10.128.6.128/255.128.7.128 151.140.0.131 group PORTS-3269-9389-49204-49206 count
+    760 permit tcp 10.128.6.128/255.128.7.128 151.140.0.132/255.255.255.254 group PORTS-3269-9389-49204-49206 count
+    770 permit tcp 10.128.6.128/255.128.7.128 151.140.0.134/255.255.255.254 group PORTS-3269-9389-49204-49206 count
+    780 permit tcp 10.128.6.128/255.128.7.128 151.140.0.136 group PORTS-3269-9389-49204-49206 count
+    790 permit tcp 10.128.6.128/255.128.7.128 10.69.104.10 group PORTS-WWW-443-64084-8082-8443-8444 count
+    800 permit tcp 10.128.6.128/255.128.7.128 151.140.105.64/255.255.255.254 group PORTS-3269-9389-49204-49206 count
+    810 permit tcp 10.128.6.128/255.128.7.128 151.140.107.218 group PORTS-3269-9389-49204-49206 count
+    820 permit tcp 10.128.6.128/255.128.7.128 151.140.48.217 group PORTS-3269-9389-49204-49206 count
+    830 permit tcp 10.128.6.128/255.128.7.128 151.140.48.218/255.255.255.254 group PORTS-3269-9389-49204-49206 count
+    840 permit tcp 10.128.6.128/255.128.7.128 151.140.77.9 group PORTS-3269-9389-49204-49206 count
+    850 permit tcp 10.128.6.128/255.128.7.128 165.130.143.238 group PORTS-3269-9389-49204-49206 count
+    860 permit tcp 10.128.6.128/255.128.7.128 165.130.143.29 group PORTS-3269-9389-49204-49206 count
+    870 permit tcp 10.128.6.128/255.128.7.128 165.130.150.20 group PORTS-3269-9389-49204-49206 count
+    880 permit tcp 10.128.6.128/255.128.7.128 165.130.204.211 group PORTS-3269-9389-49204-49206 count
+    890 permit tcp 10.128.6.128/255.128.7.128 165.130.208.217 group PORTS-3269-9389-49204-49206 count
+    900 permit tcp 10.128.6.128/255.128.7.128 165.130.218.4/255.255.255.254 group PORTS-3269-9389-49204-49206 count
+    910 permit tcp 10.128.6.128/255.128.7.128 165.130.218.5 group PORTS-3269-9389-49204-49206 count
+    920 permit tcp 10.128.6.128/255.128.7.128 165.130.132.115 eq 8087 count
+    930 permit tcp 10.128.6.128/255.128.7.128 165.130.140.140 eq 88 count
+    940 permit tcp 10.128.6.128/255.128.7.128 165.130.223.68 eq 80 count
+    950 permit tcp 10.128.6.128/255.128.7.128 165.130.223.69 eq 80 count
+    960 permit tcp 10.128.6.128/255.128.7.128 165.130.223.70 eq 80 count
+    970 permit tcp 10.128.6.128/255.128.7.128 165.130.223.107 eq 80 count
+    980 permit tcp 10.128.6.128/255.128.7.128 165.130.223.108 eq 80 count
+    990 permit tcp 10.128.6.128/255.128.7.128 165.130.184.109 eq 80 count
+    1000 permit tcp 10.128.6.128/255.128.7.128 10.69.100.140/255.255.255.254 group PORTS-8014-9090-8443 count
+    1010 permit tcp 10.128.6.128/255.128.7.128 10.69.100.142/255.255.255.254 group PORTS-8014-9090-8443 count
+    1020 permit tcp 10.128.6.128/255.128.7.128 10.69.100.144/255.255.255.254 group PORTS-8014-9090-8443 count
+    1030 permit tcp 10.128.6.128/255.128.7.128 10.69.100.146/255.255.255.254 group PORTS-8014-9090-8443 count
+    1040 permit tcp 10.128.6.128/255.128.7.128 10.77.100.140/255.255.255.254 group PORTS-8014-9090-8443 count
+    1050 permit tcp 10.128.6.128/255.128.7.128 10.77.100.142/255.255.255.254 group PORTS-8014-9090-8443 count
+    1060 permit tcp 10.128.6.128/255.128.7.128 10.77.100.144/255.255.255.254 group PORTS-8014-9090-8443 count
+    1070 permit tcp 10.128.6.128/255.128.7.128 10.77.100.146/255.255.255.254 group PORTS-8014-9090-8443 count
+    1080 permit udp 10.128.6.128/255.128.7.128 165.130.1.1 eq 50001 count
+    1090 permit tcp 10.128.6.128/255.128.7.128 165.130.186.0/255.255.255.0 eq 8014 count
+    1100 permit tcp 10.128.6.128/255.128.7.128 165.130.218.0/255.255.255.0 eq 8014 count
+    1110 permit tcp 10.128.6.128/255.128.7.128 151.140.12.154 eq 8014 count
+    1120 permit tcp 10.128.6.128/255.128.7.128 151.140.12.155 eq 8014 count
+    1130 permit tcp 10.128.6.128/255.128.7.128 151.140.12.156 eq 8014 count
+    1140 permit tcp 10.128.6.128/255.128.7.128 151.140.12.157 eq 8014 count
+    1150 permit tcp 10.128.6.128/255.128.7.128 151.140.12.158 eq 8014 count
+    1160 permit tcp 10.128.6.128/255.128.7.128 151.140.3.90 eq 8014 count
+    1170 permit tcp 10.128.6.128/255.128.7.128 151.140.3.91 eq 8014 count
+    1180 permit tcp 10.128.6.128/255.128.7.128 151.140.101.134 eq 8014 count
+    1190 permit tcp 10.128.6.128/255.128.7.128 151.140.101.135 eq 8014 count
+    1200 permit tcp 10.128.6.128/255.128.7.128 151.140.101.136 eq 8014 count
+    1210 permit tcp 10.128.6.128/255.128.7.128 151.140.101.137 eq 8014 count
+    1220 permit tcp 10.128.6.128/255.128.7.128 151.140.101.138 eq 8014 count
+    1230 permit tcp 10.128.6.128/255.128.7.128 151.140.77.58 eq 8014 count
+    1240 permit tcp 10.128.6.128/255.128.7.128 151.140.77.59 eq 8014 count
+    1250 permit tcp 10.128.6.128/255.128.7.128 10.128.0.13/255.128.7.255 eq 2967 count
+    1260 permit tcp 10.128.6.128/255.128.7.128 10.128.0.14/255.128.7.255 eq 2967 count
+    1270 permit tcp 10.128.6.128/255.128.7.128 10.128.0.22/255.128.7.255 eq 2967 count
+    1280 permit tcp 10.128.6.128/255.128.7.128 192.127.224.1 eq 443 count
+    1290 permit tcp 10.128.6.128/255.128.7.128 192.127.224.16 eq 443 count
+    1300 permit tcp 10.128.6.128/255.128.7.128 192.127.224.43 eq 443 count
+    1310 permit tcp 10.128.6.128/255.128.7.128 10.74.16.0/255.255.255.128 group PORTS-88-MSRPC-139-389-445-464-636 count
+    1320 permit tcp 10.128.6.128/255.128.7.128 10.66.16.0/255.255.255.128 group PORTS-88-MSRPC-139-389-445-464-636 count
+    1330 permit tcp 10.128.6.128/255.128.7.128 10.74.16.0/255.255.255.128 group PORTS-3268-3269-9389-49204-49206 count
+    1340 permit tcp 10.128.6.128/255.128.7.128 10.66.16.0/255.255.255.128 group PORTS-3268-3269-9389-49204-49206 count
+    1350 permit udp 10.128.6.128/255.128.7.128 10.74.16.0/255.255.255.128 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 count
+    1360 permit udp 10.128.6.128/255.128.7.128 10.66.16.0/255.255.255.128 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 count
+    1370 permit tcp 10.128.6.128/255.128.7.128 10.74.22.0/255.255.255.128 group PORTS-88-MSRPC-139-389-445-464-636 count
+    1380 permit tcp 10.128.6.128/255.128.7.128 10.66.22.0/255.255.255.128 group PORTS-88-MSRPC-139-389-445-464-636 count
+    1390 permit tcp 10.128.6.128/255.128.7.128 10.74.22.0/255.255.255.128 group PORTS-3268-3269-9389-49204-49206 count
+    1400 permit tcp 10.128.6.128/255.128.7.128 10.66.22.0/255.255.255.128 group PORTS-3268-3269-9389-49204-49206 count
+    1410 permit udp 10.128.6.128/255.128.7.128 10.74.22.0/255.255.255.128 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 count
+    1420 permit udp 10.128.6.128/255.128.7.128 10.66.22.0/255.255.255.128 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 count
+    1430 permit tcp 10.128.6.128/255.128.7.128 165.130.143.238 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1440 permit tcp 10.128.6.128/255.128.7.128 151.140.13.125 group PORTS-WWW-443 count
+    1450 permit udp 10.128.6.128/255.128.7.128 151.140.13.125 group PORTS-WWW-443 count
+    1460 permit tcp 10.128.6.128/255.128.7.128 151.140.84.87 group PORTS-WWW-443 count
+    1470 permit udp 10.128.6.128/255.128.7.128 151.140.84.87 group PORTS-WWW-443 count
+    1480 permit tcp 10.128.6.128/255.128.7.128 165.130.143.29 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1490 permit tcp 10.128.6.128/255.128.7.128 165.130.218.182 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1500 permit tcp 10.128.6.128/255.128.7.128 165.130.218.181 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1510 permit tcp 10.128.6.128/255.128.7.128 165.130.218.180 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1520 permit tcp 10.128.6.128/255.128.7.128 165.130.218.179 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1530 permit tcp 10.128.6.128/255.128.7.128 172.26.242.50 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1540 permit tcp 10.128.6.128/255.128.7.128 165.130.150.20 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1550 permit tcp 10.128.6.128/255.128.7.128 151.140.105.64 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1560 permit tcp 10.128.6.128/255.128.7.128 151.140.105.65 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1570 permit tcp 10.128.6.128/255.128.7.128 151.140.77.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1580 permit tcp 10.128.6.128/255.128.7.128 151.140.107.218 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1590 permit tcp 10.128.6.128/255.128.7.128 165.130.65.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1600 permit tcp 10.128.6.128/255.128.7.128 165.130.73.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1610 permit tcp 10.128.6.128/255.128.7.128 165.130.73.10 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1620 permit tcp 10.128.6.128/255.128.7.128 172.16.184.14 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1630 permit tcp 10.128.6.128/255.128.7.128 172.31.38.22 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1640 permit tcp 10.128.6.128/255.128.7.128 172.16.144.13 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1650 permit tcp 10.128.6.128/255.128.7.128 165.130.210.130 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1660 permit tcp 10.128.6.128/255.128.7.128 165.130.210.127 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1670 permit tcp 10.128.6.128/255.128.7.128 165.130.204.94 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1680 permit tcp 10.128.6.128/255.128.7.128 172.16.152.118 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1690 permit tcp 10.128.6.128/255.128.7.128 172.16.160.16 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1700 permit tcp 10.128.6.128/255.128.7.128 172.30.59.18 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1710 permit tcp 10.128.6.128/255.128.7.128 151.140.48.217 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1720 permit tcp 10.128.6.128/255.128.7.128 151.140.48.218 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1730 permit tcp 10.128.6.128/255.128.7.128 151.140.48.219 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1740 permit tcp 10.128.6.128/255.128.7.128 165.130.208.217 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1750 permit tcp 10.128.6.128/255.128.7.128 165.130.204.211 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1760 permit tcp 10.128.6.128/255.128.7.128 151.140.0.131 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1770 permit tcp 10.128.6.128/255.128.7.128 165.130.218.4 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1780 permit tcp 10.128.6.128/255.128.7.128 165.130.218.5 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1790 permit tcp 10.128.6.128/255.128.7.128 151.140.0.132 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1800 permit tcp 10.128.6.128/255.128.7.128 151.140.0.133 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1810 permit tcp 10.128.6.128/255.128.7.128 151.140.0.134 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1820 permit tcp 10.128.6.128/255.128.7.128 151.140.0.135 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1830 permit tcp 10.128.6.128/255.128.7.128 151.140.0.136 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1840 permit udp 10.128.6.128/255.128.7.128 165.130.143.238 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1850 permit udp 10.128.6.128/255.128.7.128 165.130.143.29 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1860 permit udp 10.128.6.128/255.128.7.128 165.130.218.182 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1870 permit udp 10.128.6.128/255.128.7.128 165.130.218.181 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1880 permit udp 10.128.6.128/255.128.7.128 165.130.218.180 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1890 permit udp 10.128.6.128/255.128.7.128 165.130.218.179 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1900 permit udp 10.128.6.128/255.128.7.128 172.26.242.50 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1910 permit udp 10.128.6.128/255.128.7.128 165.130.150.20 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1920 permit udp 10.128.6.128/255.128.7.128 151.140.105.64 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1930 permit udp 10.128.6.128/255.128.7.128 151.140.105.65 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1940 permit udp 10.128.6.128/255.128.7.128 151.140.77.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1950 permit udp 10.128.6.128/255.128.7.128 151.140.107.218 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1960 permit udp 10.128.6.128/255.128.7.128 165.130.65.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1970 permit udp 10.128.6.128/255.128.7.128 165.130.73.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1980 permit udp 10.128.6.128/255.128.7.128 165.130.73.10 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    1990 permit udp 10.128.6.128/255.128.7.128 172.16.184.14 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2000 permit udp 10.128.6.128/255.128.7.128 172.31.38.22 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2010 permit udp 10.128.6.128/255.128.7.128 172.16.144.13 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2020 permit udp 10.128.6.128/255.128.7.128 165.130.210.130 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2030 permit udp 10.128.6.128/255.128.7.128 165.130.210.127 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2040 permit udp 10.128.6.128/255.128.7.128 165.130.204.94 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2050 permit udp 10.128.6.128/255.128.7.128 172.16.152.118 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2060 permit udp 10.128.6.128/255.128.7.128 172.16.160.16 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2070 permit udp 10.128.6.128/255.128.7.128 172.30.59.18 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2080 permit udp 10.128.6.128/255.128.7.128 151.140.48.217 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2090 permit udp 10.128.6.128/255.128.7.128 151.140.48.218 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2100 permit udp 10.128.6.128/255.128.7.128 151.140.48.219 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2110 permit udp 10.128.6.128/255.128.7.128 165.130.208.217 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2120 permit udp 10.128.6.128/255.128.7.128 165.130.204.211 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2130 permit udp 10.128.6.128/255.128.7.128 151.140.0.131 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2140 permit udp 10.128.6.128/255.128.7.128 165.130.218.4 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2150 permit udp 10.128.6.128/255.128.7.128 165.130.218.5 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2160 permit udp 10.128.6.128/255.128.7.128 151.140.0.132 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2170 permit udp 10.128.6.128/255.128.7.128 151.140.0.133 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2180 permit udp 10.128.6.128/255.128.7.128 151.140.0.134 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2190 permit udp 10.128.6.128/255.128.7.128 151.140.0.135 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2200 permit udp 10.128.6.128/255.128.7.128 151.140.0.136 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 count
+    2210 permit tcp 10.128.6.128/255.128.7.128 10.128.0.13/255.128.7.255 group PORTS-WWW-443-445 count
+    2220 permit tcp 10.128.6.128/255.128.7.128 10.128.0.14/255.128.7.255 group PORTS-WWW-443-445 count
+    2230 permit tcp 10.128.6.128/255.128.7.128 10.128.0.22/255.128.7.255 group PORTS-WWW-443-445 count
+    2240 permit udp 10.128.6.128/255.128.7.128 10.128.0.13/255.128.7.255 group PORTS-4011-TFTP count
+    2250 permit udp 10.128.6.128/255.128.7.128 10.128.0.14/255.128.7.255 group PORTS-4011-TFTP count
+    2260 permit udp 10.128.6.128/255.128.7.128 10.128.0.22/255.128.7.255 group PORTS-4011-TFTP count
+    2270 permit tcp 10.128.6.128/255.128.7.128 10.128.0.14/255.128.7.255 eq 135 count
+    2280 permit udp 10.128.6.128/255.128.7.128 10.128.0.14/255.128.7.255 eq 135 count
+    2290 permit tcp 10.128.6.128/255.128.7.128 10.128.0.22/255.128.7.255 eq 135 count
+    2300 permit tcp 10.128.6.128/255.128.7.128 151.140.107.49 group PORTS-WWW-443-10123 count
+    2310 permit tcp 10.128.6.128/255.128.7.128 151.140.107.48 group PORTS-WWW-443-10123 count
+    2320 permit tcp 10.128.6.128/255.128.7.128 151.140.76.113 group PORTS-WWW-443-10123 count
+    2330 permit tcp 10.128.6.128/255.128.7.128 151.140.76.109 group PORTS-WWW-443-10123 count
+    2340 permit tcp 10.128.6.128/255.128.7.128 151.140.76.112 group PORTS-WWW-443-10123 count
+    2350 permit tcp 10.128.6.128/255.128.7.128 151.140.76.111 group PORTS-WWW-443 count
+    2360 permit tcp 10.128.6.128/255.128.7.128 151.140.107.38 group PORTS-WWW-443 count
+    2370 permit tcp 10.128.6.128/255.128.7.128 151.140.76.175 group PORTS-WWW-443 count
+    2380 permit tcp 10.128.6.128/255.128.7.128 151.140.76.110 group PORTS-WWW-443 count
+    2390 permit tcp 10.128.6.128/255.128.7.128 151.140.76.173 group PORTS-WWW-443 count
+    2400 permit tcp 10.128.6.128/255.128.7.128 151.140.2.246 group PORTS-WWW-443-10123 count
+    2410 permit tcp 10.128.6.128/255.128.7.128 151.140.48.246 group PORTS-WWW-443-10123 count
+    2420 permit tcp 10.128.6.128/255.128.7.128 151.140.48.247 group PORTS-WWW-443-10123 count
+    2430 permit tcp 10.128.6.128/255.128.7.128 151.140.2.245 group PORTS-WWW-443-10123 count
+    2440 permit tcp 10.128.6.128/255.128.7.128 151.140.2.234 group PORTS-WWW-443-10123 count
+    2450 permit tcp 10.128.6.128/255.128.7.128 151.140.2.235 group PORTS-WWW-443 count
+    2460 permit tcp 10.128.6.128/255.128.7.128 151.140.2.248 group PORTS-WWW-443 count
+    2470 permit tcp 10.128.6.128/255.128.7.128 151.140.48.249 group PORTS-WWW-443 count
+    2480 permit tcp 10.128.6.128/255.128.7.128 151.140.49.95 group PORTS-WWW-443 count
+    2490 permit tcp 10.128.6.128/255.128.7.128 151.140.49.83 group PORTS-WWW-443 count
+    2500 permit tcp 10.128.6.128/255.128.7.128 151.140.48.248 group PORTS-WWW-443 count
+    2510 permit tcp 10.128.6.128/255.128.7.128 165.130.184.150 eq 80 count
+    2520 permit tcp 10.128.6.128/255.128.7.128 165.130.184.151 eq 80 count
+    2530 permit tcp 10.128.6.128/255.128.7.128 165.130.184.208 eq 80 count
+    2540 permit tcp 10.128.6.128/255.128.7.128 165.130.184.217 eq 80 count
+    2550 permit tcp 10.128.6.128/255.128.7.128 165.130.184.210 eq 80 count
+    2560 permit tcp 10.128.6.128/255.128.7.128 165.130.184.103 eq 80 count
+    2570 permit tcp 10.128.6.128/255.128.7.128 165.130.184.102 eq 80 count
+    2580 permit tcp 10.128.6.128/255.128.7.128 165.130.184.177 eq 80 count
+    2590 permit tcp 10.128.6.128/255.128.7.128 165.130.184.209 eq 80 count
+    2600 permit tcp 10.128.6.128/255.128.7.128 165.130.184.99 eq 80 count
+    2610 permit tcp 10.128.6.128/255.128.7.128 165.130.184.115 eq 80 count
+    2620 permit tcp 10.128.6.128/255.128.7.128 165.130.184.178 eq 80 count
+    2630 permit tcp 10.128.6.128/255.128.7.128 165.130.184.179 eq 80 count
+    2640 permit tcp 10.128.6.128/255.128.7.128 165.130.184.101 eq 80 count
+    2650 permit tcp 10.128.6.128/255.128.7.128 165.130.184.100 eq 80 count
+    2660 permit tcp 10.128.6.128/255.128.7.128 165.130.184.216 eq 80 count
+    2670 permit tcp 10.128.6.128/255.128.7.128 165.130.223.164 eq 80 count
+    2680 permit tcp 10.128.6.128/255.128.7.128 165.130.223.165 eq 80 count
+    2690 permit tcp 10.128.6.128/255.128.7.128 10.66.17.7 group PORTS-WWW-443-10123 count
+    2700 permit tcp 10.128.6.128/255.128.7.128 10.66.17.8 group PORTS-WWW-443-10123 count
+    2710 permit tcp 10.128.6.128/255.128.7.128 10.66.17.9 group PORTS-WWW-443-10123 count
+    2720 permit tcp 10.128.6.128/255.128.7.128 10.66.17.10 group PORTS-WWW-443-10123 count
+    2730 permit tcp 10.128.6.128/255.128.7.128 10.66.17.11 group PORTS-WWW-443-10123 count
+    2740 permit tcp 10.128.6.128/255.128.7.128 10.66.17.15 group PORTS-WWW-443 count
+    2750 permit tcp 10.128.6.128/255.128.7.128 10.66.17.16 group PORTS-WWW-443 count
+    2760 permit tcp 10.128.6.128/255.128.7.128 10.66.17.17 eq 80 count
+    2770 permit tcp 10.128.6.128/255.128.7.128 165.130.223.166 eq 80 count
+    2780 permit tcp 10.128.6.128/255.128.7.128 165.130.223.182 eq 80 count
+    2790 permit tcp 10.128.6.128/255.128.7.128 165.130.223.183 eq 80 count
+    2800 permit tcp 10.128.6.128/255.128.7.128 165.130.223.180 eq 80 count
+    2810 permit tcp 10.128.6.128/255.128.7.128 165.130.223.181 eq 80 count
+    2820 permit tcp 10.128.6.128/255.128.7.128 165.130.223.184 eq 80 count
+    2830 permit tcp 10.128.6.128/255.128.7.128 165.130.223.185 eq 80 count
+    2840 permit tcp 10.128.6.128/255.128.7.128 165.130.223.66 eq 80 count
+    2850 permit tcp 10.128.6.128/255.128.7.128 165.130.223.65 eq 80 count
+    2860 permit tcp 10.128.6.128/255.128.7.128 165.130.223.168 eq 80 count
+    2870 permit tcp 10.128.6.128/255.128.7.128 165.130.223.167 eq 80 count
+    2880 permit tcp 10.128.6.128/255.128.7.128 165.130.223.169 eq 80 count
+    2890 permit tcp 10.128.6.128/255.128.7.128 165.130.223.67 eq 80 count
+    2900 permit tcp 10.128.6.128/255.128.7.128 165.130.184.117 group PORTS-WWW-1433 count
+    2910 permit tcp 10.128.6.128/255.128.7.128 165.130.184.112 group PORTS-WWW-1433 count
+    2920 permit tcp 10.128.6.128/255.128.7.128 165.130.184.111 group PORTS-WWW-1433 count
+    2930 deny udp 10.128.6.128/255.128.7.128 10.128.6.255/255.128.7.255 group PORTS-NETBIOS-NS-NETBIOS-DGM count
+    2940 permit any 10.128.6.128/255.128.7.128 10.128.0.0/255.128.0.0 count
+    2950 permit any 10.128.6.128/255.128.7.128 10.66.0.0/255.255.0.0 count
+    2960 permit any 10.128.6.128/255.128.7.128 10.69.96.0/255.255.224.0 count
+    2970 permit any 10.128.6.128/255.128.7.128 10.74.0.0/255.255.0.0 count
+    2980 permit any 10.128.6.128/255.128.7.128 10.77.96.0/255.255.224.0 count
+    2990 permit any 10.128.6.128/255.128.7.128 165.130.0.0/255.255.0.0 count
+    3000 permit any 10.128.6.128/255.128.7.128 151.140.0.0/255.255.0.0 count
+    3010 permit any any 151.140.4.23 count
+    3020 permit udp 10.128.6.128/255.128.7.128 range 16992 16995 165.130.184.110 count
+    3030 permit udp 10.128.6.128/255.128.7.128 group PORTS-623-664 165.130.184.110 count
+    3040 permit udp any eq 4011 10.128.0.22/255.128.7.255 count
+    3050 permit udp any eq 4011 10.128.0.14/255.128.7.255 count
+    3060 permit any 165.130.184.92/255.255.255.254 any count
+    3070 permit any 165.130.184.94 any count
+    3080 permit any 165.130.184.57 any count
+    3090 permit any 165.130.184.58 any count
+    3100 permit any 207.11.0.64 any count
+    3110 permit any 207.11.0.208 any count
+    3120 permit any 207.11.0.252 any count
+    3130 permit any 165.130.203.117 any count
+    3140 permit any 165.130.203.118 any count
+    3150 permit any 207.11.0.210/255.255.255.254 any count
+    3160 permit udp any eq 68 10.128.0.0/255.128.7.0 count
+    3170 permit udp any eq 67 10.128.0.45/255.128.7.255 eq 67 count
+    3180 permit udp 10.128.6.128/255.128.7.128 eq 3389 151.140.102.102 count
+    3190 permit udp 10.128.6.128/255.128.7.128 eq 3389 151.140.50.191 count
+    3200 permit udp 10.128.6.128/255.128.7.128 group PORTS-7775-137-138 172.26.118.122/255.255.255.254 count
+    3210 permit icmp 10.128.6.128/255.128.7.128 172.26.118.122/255.255.255.254 count
+    3220 permit icmp any any icmp-type 3 count
+    3230 permit icmp any any icmp-type echo-reply count
+    3240 permit icmp any any icmp-type echo count
+    3250 permit udp any eq 53 any count
+    3260 permit udp any eq 161 any count
+    3270 permit any any 10.128.0.38/255.128.7.255 count
+    3280 permit any any 10.128.0.13/255.128.7.255 count
+    3290 permit udp any 165.130.218.179 eq 88 count
+    3300 permit udp any 165.130.218.180 eq 88 count
+    3310 permit udp any 165.130.218.181 eq 88 count
+    3320 permit udp any 165.130.218.182 eq 88 count
+    3330 permit any 10.128.6.128/255.128.7.128 CYBERARK_PSM_RDP count
+    3340 permit tcp 10.128.6.128/255.128.7.128 10.47.3.0/255.255.255.0 group PORTS-WWW-443 count
+    3350 permit udp 10.128.6.128/255.128.7.128 10.47.3.0/255.255.255.0 group PORTS-WWW-443 count
+    3360 deny any any any log count
+access-list ip FW-VLAN30-OUT_17-7-CSR
+    10 permit tcp any any established count
+    20 permit any 10.17.64.0/255.255.254.0 10.128.6.128/255.128.7.128
+    30 permit any 10.16.92.0/255.255.254.0 10.128.6.128/255.128.7.128
+    40 permit tcp 10.69.104.10 10.128.6.128/255.128.7.128 group PORTS-WWW-443-64084-8082-8443-8444 count
+    50 permit any 151.140.4.23 any count
+    60 permit tcp 151.140.0.139 10.128.6.128/255.128.7.128 eq 4445 count
+    70 permit tcp 151.140.102.24/255.255.255.248 10.128.6.128/255.128.7.128 eq 9898 count
+    80 permit tcp 151.140.102.32/255.255.255.254 10.128.6.128/255.128.7.128 eq 9898 count
+    90 permit tcp 151.140.50.132/255.255.255.252 10.128.6.128/255.128.7.128 eq 9898 count
+    100 permit tcp 151.140.50.136/255.255.255.252 10.128.6.128/255.128.7.128 eq 9898 count
+    110 permit tcp 151.140.50.140 10.128.6.128/255.128.7.128 eq 9898 count
+    120 permit tcp 165.130.184.73 10.128.6.128/255.128.7.128 eq 4445 count
+    130 permit tcp 151.140.102.102 10.128.6.128/255.128.7.128 group PORTS-5985-MSRPC count
+    140 permit tcp 151.140.50.191 10.128.6.128/255.128.7.128 group PORTS-5985-MSRPC count
+    150 permit tcp 151.140.13.5 10.128.6.128/255.128.7.128 group PORTS-5985-MSRPC count
+    160 permit tcp 151.140.0.142 10.128.6.128/255.128.7.128 group PORTS-5985-MSRPC count
+    170 permit tcp 165.130.184.110 10.128.6.128/255.128.7.128 range 16992 16995 count
+    180 permit tcp 165.130.184.110 10.128.6.128/255.128.7.128 group PORTS-623-664 count
+    190 permit udp 165.130.184.110 10.128.6.128/255.128.7.128 range 16992 16995 count
+    200 permit udp 165.130.184.110 10.128.6.128/255.128.7.128 group PORTS-623-664 count
+    210 permit tcp 172.19.174.0/255.255.255.0 10.128.6.128/255.128.7.128 group PORTS-623-664-5986-16992-16993-16994-16995 count
+    220 permit tcp 172.19.190.0/255.255.255.0 10.128.6.128/255.128.7.128 group PORTS-623-664-5986-16992-16993-16994-16995 count
+    230 permit tcp 172.19.206.0/255.255.255.0 10.128.6.128/255.128.7.128 group PORTS-623-664-5986-16992-16993-16994-16995 count
+    240 permit tcp 172.19.222.0/255.255.255.0 10.128.6.128/255.128.7.128 group PORTS-623-664-5986-16992-16993-16994-16995 count
+    250 permit tcp 172.19.175.64/255.255.255.192 10.128.6.128/255.128.7.128 group PORTS-623-664-5986-16992-16993-16994-16995 count
+    260 permit tcp 172.19.191.64/255.255.255.192 10.128.6.128/255.128.7.128 group PORTS-623-664-5986-16992-16993-16994-16995 count
+    270 permit tcp 172.19.207.64/255.255.255.192 10.128.6.128/255.128.7.128 group PORTS-623-664-5986-16992-16993-16994-16995 count
+    280 permit tcp 172.19.223.64/255.255.255.192 10.128.6.128/255.128.7.128 group PORTS-623-664-5986-16992-16993-16994-16995 count
+    290 permit tcp 151.140.4.11 any eq 22201 count
+    300 permit tcp 151.140.4.12 any eq 22201 count
+    310 permit tcp 151.140.4.13 any eq 22201 count
+    320 permit tcp 151.140.4.14 any eq 22201 count
+    330 permit tcp 151.140.4.15 any eq 22201 count
+    340 permit tcp 151.140.4.16 any eq 22201 count
+    350 permit tcp 151.140.4.17 any eq 22201 count
+    360 permit tcp 151.140.4.19 any eq 22201 count
+    370 permit tcp 151.140.4.20 any eq 22201 count
+    380 permit tcp 151.140.4.21 any eq 22201 count
+    390 permit tcp 151.140.28.24 any eq 22201 count
+    400 permit tcp 151.140.28.25 any eq 22201 count
+    410 permit tcp 151.140.28.11 any eq 22201 count
+    420 permit tcp 151.140.28.12 any eq 22201 count
+    430 permit tcp 151.140.28.13 any eq 22201 count
+    440 permit tcp 151.140.28.14 any eq 22201 count
+    450 permit tcp 151.140.28.15 any eq 22201 count
+    460 permit tcp 151.140.28.16 any eq 22201 count
+    470 permit tcp 151.140.28.17 any eq 22201 count
+    480 permit tcp 151.140.4.18 any eq 22201 count
+    490 permit tcp 151.140.69.18 any eq 22201 count
+    500 permit tcp 10.128.0.22/255.128.7.255 any group PORTS-1109-1367 count
+    510 permit tcp 10.128.0.14/255.128.7.255 any group PORTS-1109-1367 count
+    520 permit udp 10.128.0.22/255.128.7.255 any eq 4011 count
+    530 permit udp 10.128.0.14/255.128.7.255 any eq 4011 count
+    540 permit any any 165.130.184.92/255.255.255.254 count
+    550 permit any any 165.130.184.94 count
+    560 permit any any 165.130.184.57 count
+    570 permit any any 165.130.184.58 count
+    580 permit any any 207.11.0.64 count
+    590 deny any 10.128.6.0/255.128.7.128 any count
+    600 permit any any 207.11.0.208 count
+    610 permit any any 207.11.0.252 count
+    620 permit any any 165.130.203.117 count
+    630 permit any any 165.130.203.118 count
+    640 permit any any 207.11.0.210/255.255.255.254 count
+    650 deny any 10.128.5.0/255.128.7.0 any count
+    660 permit tcp 172.19.174.0/255.255.255.0 10.128.0.0/255.128.0.0 group PORTS-MSRPC-139-445-2701-2702 count
+    670 permit tcp 172.19.190.0/255.255.255.0 10.128.0.0/255.128.0.0 group PORTS-MSRPC-139-445-2701-2702 count
+    680 permit tcp 172.19.206.0/255.255.255.0 10.128.0.0/255.128.0.0 group PORTS-MSRPC-139-445-2701-2702 count
+    690 permit tcp 172.19.222.0/255.255.255.0 10.128.0.0/255.128.0.0 group PORTS-MSRPC-139-445-2701-2702 count
+    700 permit tcp 172.19.174.0/255.255.255.0 10.128.6.128/255.128.7.128 eq 5985 count
+    710 permit tcp 172.19.190.0/255.255.255.0 10.128.6.128/255.128.7.128 eq 5985 count
+    720 permit tcp 172.19.206.0/255.255.255.0 10.128.6.128/255.128.7.128 eq 5985 count
+    730 permit tcp 172.19.222.0/255.255.255.0 10.128.6.128/255.128.7.128 eq 5985 count
+    740 permit udp 10.128.0.0/255.128.7.0 any eq 68 count
+    750 permit udp 10.128.0.45/255.128.7.255 eq 67 any eq 67 count
+    760 permit tcp 151.140.102.102 10.128.6.128/255.128.7.128 group PORTS-3389-5986 count
+    770 permit tcp 151.140.50.191 10.128.6.128/255.128.7.128 group PORTS-3389-5986 count
+    780 permit udp 151.140.102.102 10.128.6.128/255.128.7.128 eq 3389 count
+    790 permit udp 151.140.50.191 10.128.6.128/255.128.7.128 eq 3389 count
+    800 permit tcp 172.26.118.122/255.255.255.254 10.128.6.128/255.128.7.128 group PORTS-7775-137-139-445-MSRPC-2701-2702-3389-5985-5986 count
+    810 permit udp 172.26.118.122/255.255.255.254 10.128.6.128/255.128.7.128 group PORTS-7775-137-138 count
+    820 permit icmp 172.26.118.122/255.255.255.254 10.128.6.128/255.128.7.128 count
+    830 permit udp any any eq 53 count
+    840 permit udp any any eq 161 count
+    850 permit icmp any any icmp-type 3 count
+    860 permit icmp any any icmp-type echo-reply count
+    870 permit icmp any any icmp-type echo count
+    880 permit tcp 151.140.77.1 any group PORTS-5985-5986 count
+    890 permit tcp 151.140.77.2 any group PORTS-5985-5986 count
+    900 permit any 10.128.0.38/255.128.7.255 any count
+    910 permit any 10.128.0.13/255.128.7.255 any count
+    920 permit tcp 10.128.0.1/255.128.7.255 any group PORTS-WWW-1109-1367 count
+    930 permit tcp 10.128.0.45/255.128.7.255 any group PORTS-WWW-1109-1367 count
+    940 permit tcp 10.128.0.41/255.128.7.255 any group PORTS-WWW-1109-1367 count
+    950 permit tcp 10.128.0.49/255.128.7.255 any eq 8082 count
+    960 permit tcp 10.128.0.52/255.128.7.255 any eq 8082 count
+    970 permit tcp 10.128.0.53/255.128.7.255 any eq 8082 count
+    980 permit tcp 10.128.0.54/255.128.7.255 any eq 8082 count
+    990 permit tcp 10.128.0.38/255.128.7.255 any group PORTS-445-139 count
+    1000 permit tcp 10.128.0.13/255.128.7.255 any group PORTS-WWW-8080 count
+    1010 permit tcp 10.128.0.49/255.128.7.255 any eq 80 count
+    1020 permit tcp 165.130.184.0/255.255.255.0 any group PORTS-MSRPC-139-445-2701-2702 count
+    1030 permit tcp 165.130.223.0/255.255.255.0 any group PORTS-MSRPC-139-445-2701-2702 count
+    1040 permit tcp 165.130.205.191 any group PORTS-MSRPC-139-445-2701-2702 count
+    1050 permit tcp 165.130.186.17 any group PORTS-MSRPC-139-445-2701-2702 count
+    1060 permit tcp 165.130.186.18 any group PORTS-MSRPC-139-445-2701-2702 count
+    1070 permit tcp 172.19.175.64/255.255.255.192 any group PORTS-MSRPC-139-445-2701-2702 count
+    1080 permit tcp 172.19.191.64/255.255.255.192 any group PORTS-MSRPC-139-445-2701-2702 count
+    1090 permit tcp 172.19.207.64/255.255.255.192 any group PORTS-MSRPC-139-445-2701-2702 count
+    1100 permit tcp 172.19.223.64/255.255.255.192 any group PORTS-MSRPC-139-445-2701-2702 count
+    1110 permit tcp 10.66.0.0/255.255.0.0 10.128.6.128/255.128.7.128 eq 8082 count
+    1120 permit tcp 10.69.96.0/255.255.224.0 10.128.6.128/255.128.7.128 eq 8082 count
+    1130 permit tcp 10.74.0.0/255.255.0.0 10.128.6.128/255.128.7.128 eq 8082 count
+    1140 permit tcp 10.77.96.0/255.255.224.0 10.128.6.128/255.128.7.128 eq 8082 count
+    1150 permit tcp 151.140.0.0/255.255.0.0 any eq 8082 count
+    1160 permit tcp 165.130.0.0/255.255.0.0 any eq 8082 count
+    1170 permit tcp 207.11.0.0/255.255.0.128 any eq 8082 count
+    1180 permit tcp 172.19.160.0/255.255.240.0 any eq 8082 count
+    1190 permit tcp 172.19.176.0/255.255.240.0 any eq 8082 count
+    1200 permit tcp 172.19.192.0/255.255.240.0 any eq 8082 count
+    1210 permit tcp 172.19.208.0/255.255.240.0 any eq 8082 count
+    1220 permit tcp 172.19.175.64/255.255.255.192 10.128.6.128/255.128.7.128 eq 5985 count
+    1230 permit tcp 172.19.191.64/255.255.255.192 10.128.6.128/255.128.7.128 eq 5985 count
+    1240 permit tcp 172.19.207.64/255.255.255.192 10.128.6.128/255.128.7.128 eq 5985 count
+    1250 permit tcp 172.19.223.64/255.255.255.192 10.128.6.128/255.128.7.128 eq 5985 count
+    1260 permit udp 165.130.218.179 eq 88 any count
+    1270 permit udp 165.130.218.180 eq 88 any count
+    1280 permit udp 165.130.218.181 eq 88 any count
+    1290 permit udp 165.130.218.182 eq 88 any count
+    1300 permit tcp 10.66.0.0/255.255.0.0 10.128.6.128/255.128.7.128 eq 88 count
+    1310 permit tcp 10.69.96.0/255.255.224.0 10.128.6.128/255.128.7.128 eq 88 count
+    1320 permit tcp 10.74.0.0/255.255.0.0 10.128.6.128/255.128.7.128 eq 88 count
+    1330 permit tcp 10.77.96.0/255.255.224.0 10.128.6.128/255.128.7.128 eq 88 count
+    1340 permit tcp 151.140.0.0/255.255.0.0 any eq 88 count
+    1350 permit tcp 165.130.0.0/255.255.0.0 any eq 88 count
+    1360 permit tcp 172.16.0.0/255.240.0.0 any eq 88 count
+    1370 permit tcp 165.130.150.117 any eq 7 count
+    1380 permit tcp 165.130.150.117 any eq 514 count
+    1390 permit any CYBERARK_PSM_RDP 10.128.6.128/255.128.7.128 count
+    1400 permit udp any eq 1985 10.128.6.128/255.128.7.128 count
+    1410 permit udp any eq 161 10.128.6.128/255.128.7.128 count
+    1420 permit udp any group PORTS-BOOTPS-BOOTPC any count
+    1430 permit udp 165.130.1.1 eq 162 10.128.6.128/255.128.7.128 count
+    1440 permit icmp 10.128.0.1/255.128.7.255 10.128.6.128/255.128.7.128 count
+    1450 permit icmp 10.128.0.45/255.128.7.255 10.128.6.128/255.128.7.128 count
+    1460 permit udp 10.128.0.1/255.128.7.255 group PORTS-NTP-DNS 10.128.6.128/255.128.7.128 count
+    1470 permit udp 10.128.0.49/255.128.7.255 group PORTS-NTP-DNS 10.128.6.128/255.128.7.128 count
+    1480 permit udp 165.130.1.1 eq 50001 10.128.6.128/255.128.7.128 count
+    1490 permit udp 10.74.16.0/255.255.255.128 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 10.128.6.128/255.128.7.128 count
+    1500 permit udp 10.66.16.0/255.255.255.128 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 10.128.6.128/255.128.7.128 count
+    1510 permit udp 10.74.22.0/255.255.255.128 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 10.128.6.128/255.128.7.128 count
+    1520 permit udp 10.66.22.0/255.255.255.128 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 10.128.6.128/255.128.7.128 count
+    1530 permit udp 151.140.13.125 group PORTS-WWW-443 10.128.6.128/255.128.7.128 count
+    1540 permit udp 151.140.84.87 group PORTS-WWW-443 10.128.6.128/255.128.7.128 count
+    1550 permit udp 165.130.143.238 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1560 permit udp 165.130.143.29 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1570 permit udp 165.130.218.182 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1580 permit udp 165.130.218.181 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1590 permit udp 165.130.218.180 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1600 permit udp 165.130.218.179 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1610 permit udp 172.26.242.50 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1620 permit udp 165.130.150.20 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1630 permit udp 151.140.105.64 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1640 permit udp 151.140.105.65 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1650 permit udp 151.140.77.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1660 permit udp 151.140.107.218 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1670 permit udp 165.130.65.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1680 permit udp 165.130.73.9 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1690 permit udp 165.130.73.10 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1700 permit udp 172.16.184.14 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1710 permit udp 172.31.38.22 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1720 permit udp 172.16.144.13 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1730 permit udp 165.130.210.130 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1740 permit udp 165.130.210.127 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1750 permit udp 165.130.204.94 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1760 permit udp 172.16.152.118 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1770 permit udp 172.16.160.16 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1780 permit udp 172.30.59.18 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1790 permit udp 151.140.48.217 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1800 permit udp 151.140.48.218 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1810 permit udp 151.140.48.219 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1820 permit udp 165.130.208.217 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1830 permit udp 165.130.204.211 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1840 permit udp 151.140.0.131 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1850 permit udp 165.130.218.4 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1860 permit udp 165.130.218.5 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1870 permit udp 151.140.0.132 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1880 permit udp 151.140.0.133 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1890 permit udp 151.140.0.134 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1900 permit udp 151.140.0.135 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1910 permit udp 151.140.0.136 group PORTS-DNS-88-MSRPC-139-389-445-464-636-3268 10.128.6.128/255.128.7.128 count
+    1920 permit udp 10.128.0.13/255.128.7.255 group PORTS-4011-TFTP 10.128.6.128/255.128.7.128 count
+    1930 permit udp 10.128.0.14/255.128.7.255 group PORTS-4011-TFTP 10.128.6.128/255.128.7.128 count
+    1940 permit udp 10.128.0.22/255.128.7.255 group PORTS-4011-TFTP 10.128.6.128/255.128.7.128 count
+    1950 permit udp 10.128.0.14/255.128.7.255 eq 135 10.128.6.128/255.128.7.128 count
+    1960 permit any 10.128.0.0/255.128.0.0 10.128.6.128/255.128.7.128 count
+    1970 permit any 10.66.0.0/255.255.0.0 10.128.6.128/255.128.7.128 count
+    1980 permit any 10.69.96.0/255.255.224.0 10.128.6.128/255.128.7.128 count
+    1990 permit any 10.74.0.0/255.255.0.0 10.128.6.128/255.128.7.128 count
+    2000 permit any 10.77.96.0/255.255.224.0 10.128.6.128/255.128.7.128 count
+    2010 permit any 165.130.0.0/255.255.0.0 10.128.6.128/255.128.7.128 count
+    2020 permit any 151.140.0.0/255.255.0.0 10.128.6.128/255.128.7.128 count
+    2030 permit udp any 224.0.0.2 eq 1985 count
+    2040 permit udp any 224.0.0.18 eq 1985 count
+    2050 permit tcp 10.47.3.0/255.255.255.0 group PORTS-WWW-443 10.128.6.128/255.128.7.128 count
+    2060 permit udp 10.47.3.0/255.255.255.0 group PORTS-WWW-443 10.128.6.128/255.128.7.128 count
+    2070 deny any any any count
+access-list ip FW-WIRELESS-VLAN-IN-2010JULY10-CSR
+    10 permit udp any 10.128.0.40/255.128.7.255 range 8000 61000 count
+    20 permit tcp any any established count
+    30 permit tcp any 10.128.0.1/255.128.7.255 range 10000 13500 log count
+    40 permit tcp any 10.128.0.45/255.128.7.255 range 10000 13500 log count
+    50 permit tcp any 165.130.2.3 group PORTS-2003-2378-4001 count
+    60 permit tcp any 10.77.97.84 eq 135 count
+    70 permit tcp any 10.77.97.84 eq 49500 count
+    80 permit tcp any 10.69.97.212 eq 135 count
+    90 permit tcp any 10.69.97.212 eq 49500 count
+    100 permit tcp any 151.140.12.154 eq 8014 count
+    110 permit tcp any 151.140.12.155 eq 8014 count
+    120 permit tcp any 151.140.12.156 eq 8014 count
+    130 permit tcp any 151.140.12.157 eq 8014 count
+    140 permit tcp any 151.140.12.158 eq 8014 count
+    150 permit tcp any 151.140.3.90 eq 8014 count
+    160 permit tcp any 151.140.3.91 eq 8014 count
+    170 permit tcp any 151.140.101.134 eq 8014 count
+    180 permit tcp any 151.140.101.135 eq 8014 count
+    190 permit udp any any eq 1985 count
+    200 permit tcp any 151.140.101.136 eq 8014 count
+    210 permit tcp any 151.140.101.137 eq 8014 count
+    220 permit tcp any 151.140.101.138 eq 8014 count
+    230 permit tcp any 151.140.77.58 eq 8014 count
+    240 permit tcp any 151.140.77.59 eq 8014 count
+    250 permit tcp any 10.128.0.13/255.128.7.255 eq 2967 count
+    260 permit tcp any 10.128.0.14/255.128.7.255 eq 2967 count
+    270 permit tcp any 10.128.0.22/255.128.7.255 eq 2967 count
+    280 permit tcp 10.128.7.128/255.128.7.192 151.140.0.177 eq 1688 count
+    290 permit tcp 10.128.7.128/255.128.7.192 151.140.104.251 eq 1688 count
+    300 permit pim any any count
+    310 permit tcp any 10.128.0.0/9 eq 1439 count
+    320 permit tcp 10.128.7.128/255.128.7.192 10.128.4.251/255.128.7.255 group PORTS-FTPD-FTP-TELNET-WWW-554-1420-1422-1439-5005-5010 count
+    330 permit tcp 10.128.7.128/255.128.7.192 10.128.4.251/255.128.7.255 group PORTS-5050-5560-6010-7005-8029-8089-9541-12345-49170 count
+    340 permit tcp 10.128.7.128/255.128.7.192 10.128.4.252/255.128.7.255 group PORTS-FTPD-FTP-TELNET-WWW-554-1420-1422-1439-5005-5010 count
+    350 permit tcp 10.128.7.128/255.128.7.192 10.128.4.252/255.128.7.255 group PORTS-5050-5560-6010-7005-8029-8089-9541-12345-49170 count
+    360 permit tcp 10.128.0.0/9 10.128.0.32/255.128.7.255 group PORTS-5005-6010-554-5010 count
+    370 permit tcp 10.128.0.0/9 10.128.0.33/255.128.7.255 group PORTS-5005-6010-554-5010 count
+    380 permit tcp any 10.128.0.0/9 eq 139 count
+    390 permit tcp any 10.128.0.1/255.128.7.255 group PORTS-TELNET-4004-137-10010-10012-10014 count
+    400 permit tcp any 10.128.0.1/255.128.7.255 gt 49151 count
+    410 permit tcp any any group PORTS-WWW-111-DNS-13-9100-88-8080-524-445-443 count
+    420 permit udp any 10.128.0.1/255.128.7.255 group PORTS-TFTP-111-BOOTPC-4004 count
+    430 permit udp any any group PORTS-NTP-SNMP-NETBIOS-NS-DGM-DNS-BOOTPS-389-1311-2000-88 count
+    440 permit udp any 207.11.87.6 eq 500 count
+    450 permit tcp 10.128.0.0/9 148.163.149.217 eq 10020 count
+    460 permit tcp 10.128.0.0/9 148.163.153.207 eq 10020 count
+    470 permit udp any 224.0.0.251 eq 5353 count
+    480 permit udp any 224.0.1.116 eq 5001 count
+    490 permit udp any 224.0.1.35 eq 427 count
+    500 permit icmp any any icmp-type echo count
+    510 permit icmp any any icmp-type echo-reply count
+    520 permit icmp any any icmp-type 3 count
+    530 permit esp any any count
+    540 permit tcp any 10.128.0.1/255.128.7.255 group PORTS-12000-12020-12030-12060-12070 count
+    550 permit tcp any 10.128.0.1/255.128.7.255 group PORTS-12090-12100 count
+    560 permit tcp any 10.128.0.45/255.128.7.255 group PORTS-12090-12100 count
+    570 permit udp any 165.130.221.135 eq 38293 count
+    580 permit tcp any 10.128.0.16/255.128.7.255 eq 4300 count
+    590 permit tcp any any group PORTS-2000-4445-5631-8085-81-2187 count
+    600 permit tcp any any range 50000 50003 count
+    610 permit tcp any 165.130.234.12 eq 2066 count
+    620 permit udp any 10.128.0.45/255.128.7.255 eq 69 count
+    630 permit tcp any 165.130.218.126 eq 1105 count
+    640 permit tcp any 165.130.221.128 eq 7460 count
+    650 permit tcp 10.128.0.0/9 10.74.16.0/25 group PORTS-88-MSRPC-139-389-445-464-636 count
+    660 permit tcp 10.128.0.0/9 10.66.16.0/25 group PORTS-88-MSRPC-139-389-445-464-636 count
+    670 permit tcp 10.128.0.0/9 10.74.16.0/25 group PORTS-3268-3269-9389-49204-49206 count
+    680 permit tcp 10.128.0.0/9 10.66.16.0/25 group PORTS-3268-3269-9389-49204-49206 count
+    690 permit udp 10.128.0.0/9 10.74.16.0/25 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 count
+    700 permit udp 10.128.0.0/9 10.66.16.0/25 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 count
+    710 permit tcp any 165.130.218.24 eq 31037 count
+    720 permit tcp any 165.130.218.185 eq 31037 count
+    730 permit tcp any 165.130.136.111 eq 30010 count
+    740 permit tcp any 10.128.0.24/255.128.7.255 group PORTS-137-445-38293-2967-139-4300 count
+    750 permit tcp 10.128.0.0/9 10.74.22.0/25 group PORTS-88-MSRPC-139-389-445-464-636 count
+    760 permit tcp 10.128.0.0/9 10.66.22.0/25 group PORTS-88-MSRPC-139-389-445-464-636 count
+    770 permit tcp 10.128.0.0/9 10.74.22.0/25 group PORTS-3268-3269-9389-49204-49206 count
+    780 permit tcp 10.128.0.0/9 10.66.22.0/25 group PORTS-3268-3269-9389-49204-49206 count
+    790 permit udp 10.128.0.0/9 10.74.22.0/25 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 count
+    800 permit udp 10.128.0.0/9 10.66.22.0/25 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 count
+    810 permit udp 10.128.0.0/9 151.140.13.125 group PORTS-WWW-443 count
+    820 permit udp 10.128.0.0/9 151.140.84.87 group PORTS-WWW-443 count
+    830 permit tcp any 10.128.0.38/255.128.7.255 group PORTS-137-445-38293-2967-139-4300 count
+    840 permit tcp any 165.130.0.0/16 group PORTS-49254-49201-1494-135 count
+    850 permit tcp any 10.66.0.0/16 group PORTS-49254-49201-1494-135 count
+    860 permit tcp any 10.69.96.0/19 group PORTS-49254-49201-1494-135 count
+    870 permit tcp any 10.74.0.0/16 group PORTS-49254-49201-1494-135 count
+    880 permit tcp any 10.77.96.0/19 group PORTS-49254-49201-1494-135 count
+    890 permit tcp any 165.130.0.0/16 eq 926 count
+    900 permit tcp any 10.66.0.0/16 eq 926 count
+    910 permit tcp any 10.69.96.0/19 eq 926 count
+    920 permit tcp any 10.74.0.0/16 eq 926 count
+    930 permit tcp any 10.77.96.0/19 eq 926 count
+    940 permit tcp any 165.130.136.46/31 eq 8426 count
+    950 permit tcp any 165.130.170.0/24 group PORTS-8019-8008 count
+    960 permit tcp any 165.130.178.0/24 group PORTS-8019-8012 count
+    970 permit tcp any 165.130.204.192/26 group PORTS-1025-139-445-135 count
+    980 permit tcp any 165.130.204.192/26 gt 49151 count
+    990 permit tcp any 165.130.210.0/24 group PORTS-1025-49252-49253 count
+    1000 permit tcp any 165.130.218.0/24 group PORTS-88-8019-49204-445-139-1090-1025-3268 count
+    1010 permit tcp any 165.130.218.180/31 group PORTS-88-389-49201-49204-3268 count
+    1020 permit tcp any 165.130.221.132/31 group PORTS-2697-2967 count
+    1030 permit tcp any any group PORTS-389-22-139-138-137-135-123-161 count
+    1040 permit tcp any 151.140.146.68 eq 2682 count
+    1050 permit tcp any 165.130.133.17 eq 9026 count
+    1060 permit tcp any 165.130.136.111 eq 23 count
+    1070 permit tcp any 165.130.136.116 eq 30010 count
+    1080 permit tcp any 165.130.136.30 eq 8426 count
+    1090 permit tcp any 165.130.136.37 group PORTS-9080-5050 count
+    1100 permit tcp any 165.130.136.90 eq 8426 count
+    1110 permit tcp any 165.130.162.7 range 8002 8024 count
+    1120 permit tcp any 165.130.170.7 range 8002 8024 count
+    1130 permit tcp any 165.130.178.7 range 8002 8024 count
+    1140 permit tcp any 165.130.162.7 eq 8999 count
+    1150 permit tcp any 165.130.170.7 eq 8999 count
+    1160 permit tcp any 165.130.178.7 eq 8999 count
+    1170 permit tcp any 165.130.208.180 eq 1533 count
+    1180 permit tcp any 165.130.210.176/29 gt 49151 count
+    1190 permit tcp any 165.130.210.192/29 gt 49151 count
+    1200 permit tcp any 165.130.210.206/31 gt 49151 count
+    1210 permit tcp any 165.130.210.208/30 gt 49151 count
+    1220 permit tcp any 165.130.210.144/30 gt 49151 count
+    1230 permit tcp any 165.130.221.127 eq 7460 count
+    1240 permit tcp any 165.130.221.135 eq 2967 count
+    1250 permit tcp any 165.130.226.12 eq 2066 count
+    1260 permit tcp any 207.11.0.205 eq 15871 count
+    1270 permit tcp any 207.11.1.249 eq 259 count
+    1280 permit tcp any 208.250.99.14 group PORTS-9912-9902 count
+    1290 permit tcp any 208.250.99.16 eq 9912 count
+    1300 permit udp any 165.130.221.133 eq 38293 count
+    1310 permit udp any 165.130.250.70 eq 38293 count
+    1320 permit udp any 224.0.1.22 eq 427 count
+    1330 permit tcp any 151.140.100.21 group PORTS-8126-8426-51600 count
+    1340 permit tcp any 151.140.100.22 group PORTS-8126-8426-51600 count
+    1350 permit tcp any 151.140.100.23 group PORTS-8126-8426-51600 count
+    1360 permit tcp any 151.140.100.24 group PORTS-8126-8426-51600 count
+    1370 permit tcp any 151.140.100.25 group PORTS-8126-8426-51600 count
+    1380 permit tcp any 151.140.100.26 group PORTS-8126-8426-51600 count
+    1390 permit tcp any 151.140.45.48 eq 3040 count
+    1400 permit tcp any 151.140.77.34 group PORTS-8126-8426-51600 count
+    1410 permit tcp any 151.140.77.35 group PORTS-8126-8426-51600 count
+    1420 permit tcp any 151.140.77.36 group PORTS-8126-8426-51600 count
+    1430 permit tcp any 151.140.77.37 group PORTS-8126-8426-51600 count
+    1440 permit tcp any 151.140.77.38 group PORTS-8126-8426-51600 count
+    1450 permit tcp any 151.140.77.39 group PORTS-8126-8426-51600 count
+    1460 permit tcp any 65.130.216.20 eq 1025 count
+    1470 permit tcp any 64.86.106.113 eq 21 count
+    1480 permit tcp any 65.130.218.127 eq 1092 count
+    1490 permit tcp any 165.130.218.180/30 gt 1023 count
+    1500 permit tcp any 172.28.204.242 eq 1025 count
+    1510 permit tcp any 165.130.170.7 eq 8002 count
+    1520 permit tcp any 165.130.192.76 gt 1023 count
+    1530 permit tcp any 165.130.218.127 gt 1023 count
+    1540 permit tcp any 165.130.143.106 gt 1023 count
+    1550 permit tcp any 151.140.40.33 eq 4040 count
+    1560 permit tcp any 10.128.0.220/255.128.7.254 eq 3045 count
+    1570 permit tcp any 10.128.0.222/255.128.7.255 eq 3045 count
+    1580 permit udp any 255.255.255.255 eq 4098 count
+    1590 permit tcp any 165.130.242.12 gt 1023 count
+    1600 permit udp any 239.255.255.253 group PORTS-427-1900 count
+    1610 permit udp any 239.255.255.250 eq 1900 count
+    1620 permit tcp any 172.20.30.102 eq 8050 count
+    1630 permit tcp any 172.20.30.104 eq 8050 count
+    1640 permit tcp any 172.20.30.106 eq 8050 count
+    1650 permit udp any 192.168.1.103 eq 427 count
+    1660 permit tcp any 192.168.1.103 group PORTS-9220-16398 count
+    1670 permit tcp any 165.130.198.196/31 group PORTS-2967-38293 count
+    1680 permit udp any 165.130.198.196/31 group PORTS-2967-38293 count
+    1690 permit tcp any 165.130.226.76 eq 50100 count
+    1700 permit tcp any 165.130.234.76 eq 50100 count
+    1710 permit tcp any 165.130.242.76 eq 50100 count
+    1720 permit tcp any 192.168.1.98 eq 4300 count
+    1730 permit tcp any 165.130.218.126 range 1095 1096 count
+    1740 permit tcp any 165.130.209.0/24 eq 3268 count
+    1750 permit tcp any 165.130.218.179 group PORTS-1093-1067-1064 count
+    1760 permit tcp any 165.130.218.180/31 group PORTS-1093-1067-1064 count
+    1770 permit tcp any 165.130.193.180/31 eq 58100 count
+    1780 permit tcp any 10.128.0.45/255.128.7.255 eq 23 count
+    1790 permit tcp any 165.130.133.0/24 group PORTS-TELNET-30010 count
+    1800 permit tcp any 165.130.132.0/24 group PORTS-TELNET-30010 count
+    1810 permit tcp any 165.130.210.197 group PORTS-1533-1503-8081-554 count
+    1820 permit tcp any 165.130.198.192 group PORTS-1533-1503-8081-554 count
+    1830 permit tcp any 10.128.0.1/255.128.7.255 eq 13030 count
+    1840 permit tcp any 165.130.192.60 group PORTS-1533-1503-8081-554 count
+    1850 permit tcp any 10.128.0.45/255.128.7.255 eq 13030 count
+    1860 permit tcp any 165.130.128.0/17 eq 4104 count
+    1870 permit tcp any 10.128.0.45/255.128.7.255 eq 13082 count
+    1880 permit tcp any 10.128.0.1/255.128.7.255 eq 13082 count
+    1890 permit tcp any 10.66.0.0/16 eq 4101 count
+    1900 permit tcp any 10.69.96.0/19 eq 4101 count
+    1910 permit tcp any 10.74.0.0/16 eq 4101 count
+    1920 permit tcp any 10.77.96.0/19 eq 4101 count
+    1930 permit tcp any 165.130.186.57 eq 18000 count
+    1940 permit tcp any 10.128.6.0/255.128.7.128 range 1719 1720 count
+    1950 permit udp any 10.128.6.0/255.128.7.128 range 1719 1720 count
+    1960 permit udp any 10.128.6.0/255.128.7.128 range 16384 32767 count
+    1970 permit udp any 10.128.6.0/255.128.7.0 eq 69 count
+    1980 permit tcp any 10.128.0.42/255.128.7.255 eq 25001 count
+    1990 permit tcp any 10.128.0.1/255.128.7.255 range 32500 33000 count
+    2000 permit tcp any 165.130.198.210 group PORTS-5060-5061-5063-443 count
+    2010 permit tcp any 165.130.198.210 range 6891 6901 count
+    2020 permit tcp any 10.128.0.1/255.128.7.255 eq 12110 count
+    2030 permit tcp any 10.128.0.45/255.128.7.255 eq 12110 count
+    2040 permit tcp any 10.128.0.45/255.128.7.255 group PORTS-12020-12030-12060-12070-FTP count
+    2050 permit tcp any 10.128.0.1/255.128.7.255 eq 12001 count
+    2060 permit tcp any 10.128.0.45/255.128.7.255 eq 12001 count
+    2070 permit tcp any 165.130.174.208 eq 9448 count
+    2080 permit tcp any 165.130.166.208 eq 9448 count
+    2090 permit any any 165.130.64.0/24 count
+    2100 permit any any 165.130.72.0/24 count
+    2110 permit tcp any 165.130.0.0/16 group PORTS-8106-8006-8406-8126-8026-8426-51600 count
+    2120 permit tcp any 10.66.0.0/16 group PORTS-8106-8006-8406-8126-8026-8426-51600 count
+    2130 permit tcp any 10.69.96.0/19 group PORTS-8106-8006-8406-8126-8026-8426-51600 count
+    2140 permit tcp any 10.74.0.0/16 group PORTS-8106-8006-8406-8126-8026-8426-51600 count
+    2150 permit tcp any 10.77.96.0/19 group PORTS-8106-8006-8406-8126-8026-8426-51600 count
+    2160 permit tcp any 172.28.183.0/24 group PORTS-8106-8006-8406-8126-8026-8426-51600 count
+    2170 permit tcp any 165.130.166.176 eq 11011 count
+    2180 permit tcp any 165.130.230.150 eq 11011 count
+    2190 permit tcp any 165.130.238.150 eq 11011 count
+    2200 permit tcp any 165.130.174.176 eq 11011 count
+    2210 permit tcp any 165.130.222.151 eq 11011 count
+    2220 permit tcp any 165.130.166.239 eq 11011 count
+    2230 permit tcp 10.128.0.0/255.128.0.0 any range 2701 2702 count
+    2240 permit tcp any 65.23.153.4 eq 8086 count
+    2250 permit tcp any 165.130.148.84 eq 5050 count
+    2260 permit tcp 10.128.5.6/255.128.7.255 151.140.143.10 eq 21 count
+    2270 permit udp any 10.128.6.0/255.128.7.255 range 2000 3000 count
+    2280 permit tcp any 10.128.0.24/255.128.7.255 eq 2967 count
+    2290 permit tcp any 10.128.0.38/255.128.7.255 eq 2967 count
+    2300 permit udp any any eq 162 count
+    2310 permit tcp any 165.130.186.159 eq 8014 count
+    2320 permit tcp any 165.130.186.160/30 eq 8014 count
+    2330 permit tcp any 165.130.186.164/31 eq 8014 count
+    2340 permit tcp any 165.130.218.196 eq 8014 count
+    2350 permit tcp any 165.130.218.50 eq 8014 count
+    2360 permit tcp any 165.130.218.109 eq 8014 count
+    2370 permit tcp any 165.130.218.184 eq 8014 count
+    2380 permit tcp any 165.130.218.191 eq 8014 count
+    2390 permit tcp any 165.130.218.192/31 eq 8014 count
+    2400 permit udp any 10.121.130.176/30 range 16384 32767 count
+    2410 permit udp any 10.122.130.176/30 range 16384 32767 count
+    2420 permit tcp any 10.212.213.0/24 eq 23 count
+    2430 permit udp any 10.121.130.178 eq 69 count
+    2440 permit any any 239.192.2.0/24 count
+    2450 permit udp any 239.129.1.0/24 count
+    2460 permit igmp any any count
+    2470 permit udp any 10.128.4.0/255.128.7.0 range 16384 32767 count
+    2480 permit udp any 10.128.7.64/255.128.7.192 range 16384 32767 count
+    2490 permit udp any 10.128.7.0/255.128.7.192 range 16384 32767 count
+    2500 permit udp any any eq 53 count
+    2510 permit udp any any eq 161 count
+    2520 permit udp any range 600 1130 10.128.0.45/255.128.7.255 count
+    2530 permit udp any eq 161 any count
+    2540 permit udp any group PORTS-1077-1496-1662-20000-53-137-123-514-69-5632 any count
+    2550 permit udp any gt 1023 165.130.204.192/26 count
+    2560 permit udp any gt 1023 165.130.210.212/31 count
+    2570 permit udp any gt 1023 165.130.210.208/30 count
+    2580 permit udp any gt 1023 165.130.210.192/29 count
+    2590 permit udp any gt 1023 165.130.210.144/30 count
+    2600 permit udp any range 628 914 10.128.0.46/255.128.7.255 count
+    2610 permit udp any range 20002 20020 10.128.0.1/255.128.7.255 count
+    2620 permit udp any range 1026 2758 10.128.0.1/255.128.7.255 count
+    2630 permit udp any eq 68 10.128.0.0/255.128.7.0 count
+    2640 permit udp any eq 1288 10.128.0.0/255.128.7.0 count
+    2650 permit udp 10.128.0.0/9 eq 161 151.140.45.138 count
+    2660 permit udp any eq 67 10.128.0.45/255.128.7.255 eq 67 count
+    2670 permit udp any eq 2967 165.130.198.196 count
+    2680 permit udp any range 16384 32767 10.121.130.176/30 eq 2000 count
+    2690 permit udp any range 16384 32767 10.122.130.176/30 eq 2000 count
+    2700 permit udp any range 16384 32767 10.121.130.176/30 range 16384 32767 count
+    2710 permit udp any range 16384 32767 10.122.130.176/30 range 16384 32767 count
+    2720 permit any any 165.130.216.41 count
+    2730 permit any any 165.130.216.42/31 count
+    2740 permit any any 165.130.216.44/31 count
+    2750 permit udp 10.128.0.0/9 eq 3389 151.140.102.102 count
+    2760 permit udp 10.128.0.0/9 eq 3389 151.140.50.191 count
+    2770 permit any any 165.130.216.46 count
+    2780 permit udp any eq 3181 any count
+    2790 permit any 239.192.2.0/255.255.255.0 any count
+    2800 permit udp 239.129.1.0/255.255.255.0 any count
+    2810 permit any 10.128.7.128/255.128.7.192 CYBERARK_PSM_RDP count
+    2820 permit udp any 10.23.20.0/24 group PORTS-TFTP-2000-6969 count
+    2830 permit udp any 10.33.20.0/24 group PORTS-TFTP-2000-6969 count
+    2840 permit tcp any 10.23.20.0/24 eq 2000 count
+    2850 permit tcp any 10.33.20.0/24 eq 2000 count
+    2860 permit udp any 10.23.20.0/24 range 5060 5100 count
+    2870 permit tcp any 10.23.20.0/24 range 5060 5100 count
+    2880 permit udp any 10.33.20.0/24 range 5060 5100 count
+    2890 permit tcp any 10.33.20.0/24 range 5060 5100 count
+    2900 permit udp any 10.23.20.0/24 range 16384 61000 count
+    2910 permit udp any 10.33.20.0/24 range 16384 61000 count
+    2920 permit udp any range 16384 61000 10.23.20.0/24 count
+    2930 permit udp any range 16384 61000 10.33.20.0/24 count
+    2940 permit any any 52.252.217.217 count
+    2950 permit any any 65.52.201.235 count
+    2960 permit any any 157.55.166.155 count
+    2970 permit any any 52.150.51.239 count
+    2980 permit any any 54.215.171.160 count
+    2990 permit any any 52.162.39.48 count
+    3000 permit tcp any ZEBRASIGNALCTRL group PORTS-ZEBRASIGNALCTRL_TCP count
+    3010 permit udp any ZEBRASIGNALCTRL group PORTS-ZEBRASIGNALCTRL_UDP count
+    3020 permit tcp any ZEBRACONNECTSSL group PORTS-ZEBRA_SSL_TCP count
+    3030 permit tcp any ZEBRAMQTT group PORTS-ZEBRA_SSL_TCP count
+    3040 deny any any any log count
+access-list ip FW-WIRELESS-VLAN-OUT_17-7-CSR
+    10 permit udp 10.128.0.40/255.128.7.255 any range 8000 61000 count
+    20 permit tcp any any established count
+    30 permit tcp 10.128.0.45/255.128.7.255 10.128.5.7/255.128.7.255 eq 8111 count
+    31 permit tcp 10.128.0.45/255.128.7.255 10.128.7.7/255.128.7.255 eq 8111 count
+    32 permit tcp 10.128.0.45/255.128.7.255 10.128.7.6/255.128.7.255 eq 8111 count
+    40 permit tcp 10.128.0.45/255.128.7.255 any eq 3003 count
+    60 permit tcp any any eq 9100 count
+    70 permit tcp 10.128.0.0/255.128.7.0 any range 601 1029 count
+    80 permit tcp any group PORTS-139-9100-WWW-8080 any count
+    90 permit udp any eq 53 any count
+    100 permit udp any eq 161 any count
+    110 permit udp 10.128.0.45/255.128.7.255 any range 600 1130 count
+    120 permit icmp any any icmp-type 3 count
+    130 permit icmp any any icmp-type echo-reply count
+    140 permit icmp any any icmp-type echo count
+    150 permit esp any any count
+    160 permit tcp 10.128.0.1/255.128.7.255 eq 4004 any count
+    170 permit tcp any any group PORTS-2000-4445-5631-8085-81-2187 count
+    180 permit tcp any any eq 27401 count
+    190 permit tcp any any eq 88 count
+    200 permit tcp any any range 50000 50003 count
+    210 permit udp any any eq 161 count
+    220 permit tcp 165.130.218.181 any group PORTS-139-445 count
+    230 permit tcp 165.130.218.181 any eq 1344 count
+    240 permit tcp any any group PORTS-1034-1050-1303-1321-22-443-80-5631 count
+    250 permit tcp 165.130.221.132/30 any eq 2967 count
+    260 permit tcp 165.130.221.132/30 any eq 1097 count
+    270 permit tcp 10.128.0.41/255.128.7.255 any eq 1034 count
+    280 permit tcp 10.128.0.41/255.128.7.255 any eq 1038 count
+    290 permit tcp 10.128.0.24/255.128.7.255 any count
+    300 permit tcp 10.128.0.38/255.128.7.255 any count
+    310 permit udp any any group PORTS-1077-1496-1662-20000-53-137-123-514-69-5632 count
+    320 permit udp 165.130.204.192/26 any gt 1023 count
+    330 permit udp 165.130.210.212/31 any gt 1023 count
+    340 permit udp 165.130.210.208/30 any gt 1023 count
+    350 permit udp 165.130.210.192/29 any gt 1023 count
+    360 permit udp 165.130.210.144/30 any gt 1023 count
+    370 permit udp 10.128.0.46/255.128.7.255 any range 628 914 count
+    380 permit udp 10.128.0.1/255.128.7.255 any range 20002 20020 count
+    390 permit udp 10.128.0.1/255.128.7.255 any range 1026 2758 count
+    400 permit udp 10.128.0.0/255.128.7.0 any eq 68 count
+    410 permit udp 10.128.0.0/255.128.7.0 any eq 1288 count
+    420 permit udp 151.140.45.138 10.128.0.0/9 eq 161 count
+    430 permit tcp 151.140.45.138 any eq 21 count
+    440 permit tcp 10.128.0.45/255.128.7.255 any eq 21 count
+    450 permit tcp 165.130.218.153 eq 50003 any count
+    460 permit tcp 165.130.218.184/31 eq 50003 any count
+    470 permit tcp 165.130.218.176/29 eq 445 any count
+    480 permit tcp 207.11.0.205 any count
+    490 permit tcp 172.16.144.25 any eq 445 count
+    500 permit tcp 165.130.218.127 any eq 445 count
+    510 permit tcp 165.130.136.47 eq 8426 any count
+    520 permit tcp 165.130.218.126 eq 445 any count
+    530 permit tcp 208.250.99.14 eq 9912 any count
+    540 permit udp 10.128.0.45/255.128.7.255 eq 67 any eq 67 count
+    550 permit tcp 165.130.198.196 any eq 2967 count
+    560 permit udp 165.130.198.196 any eq 2967 count
+    570 permit tcp 165.130.221.135 any eq 1065 count
+    580 permit tcp 165.130.202.59 any eq 1065 count
+    590 permit tcp 165.130.169.222 any eq 139 count
+    600 permit tcp 165.130.169.169 any eq 139 count
+    610 permit tcp 165.130.169.108 any eq 139 count
+    620 permit tcp 165.130.169.184 any eq 139 count
+    630 permit tcp 165.130.128.91 any eq 139 count
+    640 permit tcp 165.130.128.91 any eq 445 count
+    650 permit tcp 10.128.6.0/255.128.7.128 range 1719 1720 any count
+    660 permit udp 10.121.130.176/30 eq 2000 any range 16384 32767 count
+    670 permit udp 10.122.130.176/30 eq 2000 any range 16384 32767 count
+    680 permit udp 10.121.130.176/30 range 16384 32767 any range 16384 32767 count
+    690 permit udp 10.122.130.176/30 range 16384 32767 any range 16384 32767 count
+    700 permit udp 10.128.6.0/255.128.7.128 range 1719 1720 any count
+    710 permit udp 10.128.6.0/255.128.7.128 range 16384 32767 any count
+    720 permit udp 10.128.6.0/255.128.7.128 range 2000 3000 any count
+    730 permit tcp any any eq 7777 count
+    740 permit tcp 10.128.0.1/255.128.7.255 any group PORTS-6100-6101-9100 count
+    750 permit tcp 10.128.0.45/255.128.7.255 any group PORTS-6100-6101-9100 count
+    760 permit any 165.130.216.41 any count
+    770 permit any 165.130.216.42/31 any count
+    780 permit any 165.130.216.44/31 any count
+    790 permit any 165.130.64.0/24 any count
+    800 permit tcp any any eq 8086 count
+    810 permit tcp any any eq 3181 count
+    820 permit tcp any any eq 3389 count
+    830 permit tcp 151.140.102.102 10.128.0.0/9 eq 5986 count
+    840 permit tcp 151.140.50.191 10.128.0.0/9 eq 5986 count
+    850 permit udp 151.140.102.102 10.128.0.0/9 eq 3389 count
+    860 permit udp 151.140.50.191 10.128.0.0/9 eq 3389 count
+    870 permit any 165.130.72.0/24 any count
+    880 permit any 165.130.216.46 any count
+    890 permit tcp any any eq 8086 count
+    900 permit tcp any any eq 3181 count
+    910 permit udp any any eq 3181 count
+    920 permit tcp 151.140.143.10 10.128.5.6/255.128.7.255 eq 21 count
+    930 permit tcp 10.128.0.45/255.129.7.255 10.128.5.6/255.128.7.255 eq 8111 count
+    940 permit tcp any 10.128.0.0/9 range 2701 2702 count
+    950 permit tcp 151.140.100.21 group PORTS-8126-8426-51600 any count
+    960 permit tcp 151.140.100.22 group PORTS-8126-8426-51600 any count
+    970 permit tcp 151.140.100.23 group PORTS-8126-8426-51600 any count
+    980 permit tcp 151.140.100.24 group PORTS-8126-8426-51600 any count
+    990 permit tcp 151.140.100.25 group PORTS-8126-8426-51600 any count
+    1000 permit tcp 151.140.100.26 group PORTS-8126-8426-51600 any count
+    1010 permit tcp 151.140.77.34 group PORTS-8126-8426-51600 any count
+    1020 permit tcp 151.140.77.35 group PORTS-8126-8426-51600 any count
+    1030 permit tcp 151.140.77.36 group PORTS-8126-8426-51600 any count
+    1040 permit tcp 151.140.77.37 group PORTS-8126-8426-51600 any count
+    1050 permit tcp 151.140.77.38 group PORTS-8126-8426-51600 any count
+    1060 permit tcp 151.140.77.39 group PORTS-8126-8426-51600 any count
+    1070 permit pim any any count
+    1080 permit udp 10.128.4.0/255.128.7.0 range 16384 32767 any count
+    1090 permit udp 10.128.7.64/255.128.7.192 range 16384 32767 any count
+    1100 permit any any 239.192.2.0/24 count
+    1110 permit udp any 239.129.1.0/24 count
+    1120 permit igmp any any count
+    1130 permit tcp 172.19.136.0/26 any eq 7775 count
+    1140 permit tcp 172.19.144.0/26 any eq 7775 count
+    1150 permit tcp 172.19.152.0/26 any eq 7775 count
+    1160 permit tcp 172.19.224.0/26 any eq 7775 count
+    1170 permit tcp 172.19.174.0/24 any eq 7775 count
+    1180 permit tcp 172.19.190.0/24 any eq 7775 count
+    1190 permit tcp 172.19.206.0/24 any eq 7775 count
+    1200 permit tcp 172.19.222.0/24 any eq 7775 count
+    1210 permit tcp 172.19.175.64/26 any eq 7775 count
+    1220 permit tcp 172.19.191.64/26 any eq 7775 count
+    1230 permit tcp 172.19.207.64/26 any eq 7775 count
+    1240 permit tcp 172.19.223.64/26 any eq 7775 count
+    1250 permit udp 10.128.7.0/255.128.7.192 range 16384 32767 any count
+    1260 permit any CYBERARK_PSM_RDP 10.128.7.128/255.128.7.192 count
+    1270 permit udp any eq 1985 any count
+    1280 permit udp 10.128.0.1/255.128.7.255 group PORTS-TFTP-111-BOOTPC-4004 any count
+    1290 permit udp any group PORTS-NTP-SNMP-NETBIOS-NS-DGM-DNS-BOOTPS-389-1311-2000-88 any count
+    1300 permit udp 207.11.87.6 eq 500 any count
+    1310 permit udp 224.0.0.251 eq 5353 any count
+    1320 permit udp 224.0.1.116 eq 5001 any count
+    1330 permit udp 224.0.1.35 eq 427 any count
+    1340 permit udp 165.130.221.135 eq 38293 any count
+    1350 permit udp 10.128.0.45/255.128.7.255 eq 69 any count
+    1360 permit udp 10.74.16.0/25 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 10.128.0.0/9 count
+    1370 permit udp 10.66.16.0/25 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 10.128.0.0/9 count
+    1380 permit udp 10.74.22.0/25 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 10.128.0.0/9 count
+    1390 permit udp 10.66.22.0/25 group PORTS-88-NTP-NETBIOS-NS-NETBIOS-DGM-389-445-464 10.128.0.0/9 count
+    1400 permit udp 151.140.13.125 group PORTS-WWW-443 10.128.0.0/9 count
+    1410 permit udp 151.140.84.87 group PORTS-WWW-443 10.128.0.0/9 count
+    1420 permit udp 165.130.221.133 eq 38293 any count
+    1430 permit udp 165.130.250.70 eq 38293 any count
+    1440 permit udp 239.255.255.250 eq 1900 any count
+    1450 permit udp 192.168.1.103 eq 427 any count
+    1460 permit udp 165.130.198.196/31 group PORTS-2967-38293 any count
+    1470 permit udp 10.128.6.0/255.128.7.0 eq 69 any count
+    1480 permit udp any eq 162 any count
+    1490 permit udp 10.121.130.176/31 range 16384 32767 any count
+    1500 permit udp 10.122.130.176/31 range 16384 32767 any count
+    1510 permit udp 10.121.130.178 eq 69 any count
+    1520 permit udp 10.122.130.178 eq 69 any count
+    1530 permit any 239.192.2.0/24 any count
+    1540 permit udp 239.129.1.0/24 any count
+    1550 permit udp any 224.0.0.2 eq 1985 count
+    1560 permit tcp any 165.130.2.3 eq 2003 count
+    1570 permit udp 10.121.140.154 eq 69 any count
+    1580 permit udp 10.122.140.154 eq 69 any count
+    1590 permit udp 10.23.20.0/24 eq 2000 any count
+    1600 permit tcp 10.33.20.0/24 eq 2000 any count
+    1610 permit udp 10.23.20.0/24 range 5060 5100 any count
+    1620 permit tcp 10.23.20.0/24 range 5060 5100 any count
+    1630 permit udp 10.33.20.0/24 range 5060 5100 any count
+    1633 permit any 52.252.217.217/255.255.255.255 any
+    1636 permit any 65.52.201.235/255.255.255.255 any 
+    1640 permit tcp 10.33.20.0/24 range 5060 5100 any count
+    1650 permit udp 10.23.20.0/24 any range 16384 61000 count
+    1660 permit udp 10.23.20.0/24 range 16384 61000 any count
+    1670 permit udp 10.33.20.0/24 any range 16384 61000 count
+    1680 permit udp 10.33.20.0/24 range 16384 61000 any count
+    1690 permit udp 224.0.1.22 eq 427 any count
+    1700 permit udp 255.255.255.255 eq 4098 any count
+    1710 permit udp 239.255.255.253 group PORTS-427-1900 any count
+    1720 permit any 52.252.217.217 any count
+    1730 permit any 65.52.201.235 any count
+    1740 permit any 157.55.166.155 any count
+    1750 permit any 52.150.51.239 any count
+    1760 permit any 54.215.171.160 any count
+    1770 permit any 52.162.39.48 any count
+    1790 permit udp any 224.0.0.18 eq 1985 count
+    1800 permit tcp ZEBRASIGNALCTRL group PORTS-ZEBRASIGNALCTRL_TCP any count
+    1810 permit udp ZEBRASIGNALCTRL group PORTS-ZEBRASIGNALCTRL_UDP any count
+    1820 permit tcp ZEBRACONNECTSSL group PORTS-ZEBRA_SSL_TCP any count
+    1830 permit tcp ZEBRAMQTT group PORTS-ZEBRA_SSL_TCP any count
+    1840 deny any any any count
+access-list ip SNMP_ACL
+    10 permit any 10.130.72.0/255.255.252.0 any
+    20 permit any 151.140.0.0/16 any
+    30 permit any 165.130.0.0/16 any
+    40 permit any 172.0.0.0/8 any
+    50 permit any 192.168.50.0/24 any
+    60 permit any 207.11.12.0/24 any
+    70 permit any 207.11.21.0/24 any
+    80 permit any 10.74.220.32/255.255.255.240 any
+access-list ip VSAT-OUT-01-14-14
+    10 permit icmp any any count
+    20 permit ip any 172.24.2.38 count
+    30 deny tcp 10.128.0.0/9 10.128.0.0/9 eq 445 count
+    40 deny tcp 10.128.0.0/9 10.128.0.0/9 eq 135 count
+    50 deny tcp 10.128.0.0/9 10.128.0.0/9 eq 139 count
+    60 permit tcp any any eq 445 count
+    70 permit tcp any any eq 135 count
+    80 permit tcp any any eq 139 count
+    90 permit tcp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 gt 1023 count
+    100 permit tcp 10.128.0.45/255.128.7.255 10.128.0.45/255.128.7.255 gt 1023 count
+    110 permit tcp any 10.128.0.0/9 eq 12040 count
+    120 permit udp any 10.128.0.0/9 eq 12040 count
+    130 permit tcp 10.128.0.0/9 10.128.0.32/255.128.7.255 eq 5005 count
+    140 permit tcp 10.128.0.0/9 10.128.0.32/255.128.7.255 eq 6010 count
+    150 permit tcp 10.128.0.0/9 10.128.0.32/255.128.7.255 eq 554 count
+    160 permit tcp 10.128.0.0/9 10.128.0.32/255.128.7.255 eq 5010 count
+    170 permit tcp 10.128.0.0/9 10.128.0.33/255.128.7.255 eq 5005 count
+    180 permit tcp 10.128.0.0/9 10.128.0.33/255.128.7.255 eq 6010 count
+    190 permit tcp 10.128.0.0/9 10.128.0.33/255.128.7.255 eq 554 count
+    200 permit tcp 10.128.0.0/9 10.128.0.33/255.128.7.255 eq 5010 count
+    210 permit tcp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 eq 9950 count
+    220 permit tcp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 eq 48 count
+    230 permit tcp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 eq 514 count
+    240 permit tcp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 eq 515 count
+    250 permit tcp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 eq 389 count
+    260 permit udp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 eq 111 count
+    270 permit udp 10.128.0.45/255.128.7.255 10.128.0.45/255.128.7.255 eq 111 count
+    280 permit tcp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 gt 49151 count
+    290 permit tcp 10.128.0.45/255.128.7.255 10.128.0.45/255.128.7.255 gt 49151 count
+    300 permit tcp 10.128.0.45/255.128.7.255 10.128.0.1/255.128.7.255 range 32500 33000 count
+    310 permit tcp 10.128.0.45/255.128.7.255 10.128.0.45/255.128.7.255 range 32500 33000 count
+    320 permit tcp 10.128.0.0/9 10.128.0.1/255.128.7.255 eq 23 count
+    330 permit tcp 10.128.0.0/9 10.128.0.1/255.128.7.255 eq 80 count
+    340 permit tcp 10.128.0.0/9 10.128.0.1/255.128.7.255 eq 4004 count
+    350 permit tcp 10.128.0.0/9 10.128.0.1/255.128.7.255 eq 111 count
+    360 permit tcp 10.128.0.0/9 10.128.0.4/255.128.7.255 eq 80 count
+    370 permit udp 10.128.0.0/9 10.128.0.1/255.128.7.255 eq 111 count
+    380 permit tcp 10.128.0.0/9 10.128.0.1/255.128.7.255 gt 49151 count
+    390 permit tcp 10.128.0.0/9 10.128.0.0/9 eq 9100 count
+    400 permit tcp 10.128.0.0/9 10.128.0.0/9 eq 1439 count
+    410 permit tcp 10.128.0.0/9 10.128.0.0/9 eq 80 count
+    420 permit tcp 10.128.0.0/9 10.128.0.0/9 eq 1420 count
+    430 permit tcp 10.128.6.5/255.128.7.255 10.128.6.5/255.128.7.255 eq 22 count
+    440 permit tcp 10.128.0.0/9 10.128.0.24/255.128.7.255 eq 8080 count
+    450 permit tcp 10.128.0.0/9 10.128.0.0/9 established count
+    460 permit tcp 10.128.0.45/255.128.7.255 10.128.0.45/255.128.7.255 count
+    470 permit udp 10.128.0.1/255.128.7.255 eq 111 10.128.0.0/9 count
+    480 permit tcp 10.128.0.0/9 10.74.16.0/25 group PORTS-88-135-139-389-445-464-636 count
+    490 permit tcp 10.128.0.0/9 10.66.16.0/25 group PORTS-88-135-139-389-445-464-636 count
+    500 permit tcp 10.128.0.0/9 10.74.16.0/25 group PORTS-3268-3269-9389-49204-49206 count
+    510 permit tcp 10.128.0.0/9 10.66.16.0/25 group PORTS-3268-3269-9389-49204-49206 count
+    520 permit udp 10.128.0.0/9 10.74.16.0/25 group PORTS-88-123-137-138-389-445-464 count
+    530 permit udp 10.128.0.0/9 10.66.16.0/25 group PORTS-88-123-137-138-389-445-464 count
+    540 permit tcp 10.128.0.0/9 10.74.22.0/25 group PORTS-88-135-139-389-445-464-636 count
+    550 permit tcp 10.128.0.0/9 10.66.22.0/25 group PORTS-88-135-139-389-445-464-636 count
+    560 permit tcp 10.128.0.0/9 10.74.22.0/25 group PORTS-3268-3269-9389-49204-49206 count
+    570 permit tcp 10.128.0.0/9 10.66.22.0/25 group PORTS-3268-3269-9389-49204-49206 count
+    580 permit udp 10.128.0.0/9 10.74.22.0/25 group PORTS-88-123-137-138-389-445-464 count
+    590 permit udp 10.128.0.0/9 10.66.22.0/25 group PORTS-88-123-137-138-389-445-464 count
+    600 permit tcp 10.128.0.0/9 10.128.0.1/255.128.7.255 group PORTS-12000-12020-12030-12060-12070 count
+    610 permit tcp 10.128.0.0/9 10.128.0.45/255.128.7.255 group PORTS-12000-12020-12030-12060-12070 count
+    620 permit tcp 10.128.0.1/255.128.7.255 group PORTS-12000-12020-12030-12060-12070 10.128.0.0/9 count
+    630 permit tcp 10.128.0.45/255.128.7.255 group PORTS-12000-12020-12030-12060-12070 10.128.0.0/9 count
+    640 permit udp 10.128.0.45/255.128.7.255 eq 111 10.128.0.0/9 count
+    650 deny udp 10.128.0.0/9 10.128.0.0/9 eq 161 count
+    660 deny udp 10.128.0.0/9 eq 161 10.128.0.0/9 count
+    670 deny udp 10.128.0.0/255.128.7.255 10.215.243.40 eq 162 count
+    680 deny udp 10.128.0.0/9 10.128.0.0/9 eq 123 count
+    690 deny any 10.128.0.0/9 10.128.0.0/9 count
+    700 deny tcp 10.128.0.54/255.128.7.255 any eq 27000 count
+    710 deny any any MOZY_BACKUPS count
+    720 deny any any RUBRIK_BACKUPS count
+    730 deny udp any any eq 9997 count
+    740 deny tcp any any eq 9997 count
+    750 deny udp any any eq 17472 count
+    760 deny udp any any eq 17477 count
+    770 deny tcp any any eq 17472 count
+    780 deny tcp any any eq 17477 count
+    790 deny tcp any any eq 4444 count
+    800 deny udp any any eq 4444 count
+    810 permit any any any
+!
+!----- Apply Contro Plane ACL -------
+apply access-list ip CONTROLPLANE control-plane vrf default
+!
+!-----QoS Classifiers--------
+class ip SCCM_OTHER
+	10 match tcp 10.128.0.14/0.127.248.0 10.128.0.0/0.127.255.255
+class ip SCCM_VLAN2
+	10 match tcp 10.128.0.14/0.127.248.0 10.128.0.0/0.127.248.255
+	20 match tcp 10.128.0.14/0.127.248.0 10.128.1.0/0.127.248.255
+	30 match tcp 10.128.0.14/0.127.248.0 10.128.2.0/0.127.248.255
+class ip QOS-m-bulk-af11
+    10 comment match access-group name QOSa_sccm
+    20 match any any 151.140.104.238 count
+    30 match any any 151.140.107.38 count
+    40 match any any 151.140.107.48/31 count
+    50 match any any 151.140.14.101 count
+    60 match any any 151.140.2.233 count
+    70 match any any 151.140.2.234/31 count
+    80 match any any 151.140.2.245 count
+    90 match any any 151.140.2.246 count
+    100 match any any 151.140.2.248 count
+    110 match any any 151.140.48.220 count
+    120 match any any 151.140.48.246/31 count
+    130 match any any 151.140.48.248/31 count
+    140 match any any 151.140.49.83 count
+    150 match any any 151.140.49.95 count
+    160 match any any 151.140.50.130 count
+    170 match any any 151.140.76.105 count
+    180 match any any 151.140.76.108/30 count
+    190 match any any 151.140.76.112/31 count
+    200 match any any 151.140.76.173/255.255.255.253 count
+    210 match any any 151.140.78.5 count
+    220 match any any 151.140.79.142/31 count
+    230 match any any 165.130.184.107 count
+    240 match any any 165.130.184.115 count
+    250 match any any 165.130.184.150/31 count
+    260 match any any 165.130.184.177 count
+    270 match any any 165.130.184.209 count
+    280 match any any 165.130.184.99 count
+    290 match any any 165.130.190.82 count
+    300 match any any 165.130.208.247 count
+    310 match any any 165.130.223.107 count
+    320 match any any 165.130.223.108 count
+    330 match any any 165.130.223.180/30 count
+    340 match any any 165.130.223.185 count
+    350 match any any 165.130.223.65 count
+    360 match any any 165.130.223.66 count
+    370 match any any 165.130.223.71 count
+    380 match any any 172.17.98.144 count
+    390 match any any 207.11.31.118 count
+    400 match any any 10.66.200.8/30 count
+    410 match any any 10.66.200.27 count
+    420 match any any 10.66.200.28/30 count
+    430 match any any 10.66.200.32/29 count
+    440 match any any 10.74.200.8/29 count
+    450 match any any 10.74.200.16/28 count
+    460 match any any 10.74.200.35 count
+    470 match any any 151.140.76.175 count
+    480 match any any 165.130.174.46 count
+    490 match any any 207.11.31.121 count
+    500 match any any 207.11.34.130 count
+    510 comment match access-group name QOSa_monitorTCP
+    520 match tcp any any eq 9997 count
+    530 match any any 165.130.1.8 count
+    540 match any any 165.130.1.16 count
+    550 match any any 165.130.1.18 count
+    560 match any any 165.130.1.19 count
+    570 match any any 165.130.1.20 count
+    580 match any any 165.130.1.21 count
+    590 match tcp any any eq 162 count
+    600 match tcp any eq 162 any count
+    610 match tcp any any eq 1270 count
+    611 match tcp any any eq 5723 count
+    620 match tcp any eq 1270 any count
+    621 match tcp any eq 5723 any count
+    630 comment match access-group name QOSa_monitorUDP
+    640 match udp any any eq 514 count
+    650 comment match access-group name QOSa_tripwire
+    660 match any any 151.140.102.24/29 count
+    670 match any any 151.140.102.32/29 count
+    680 match any any 151.140.102.40 count
+    690 match any any 151.140.12.147 count
+    700 match any any 151.140.12.97 count
+    710 match any any 151.140.50.132/30 count
+    720 match any any 151.140.50.136/29 count
+    730 match any any 151.140.78.162/31 count
+    740 match any any 172.18.138.197/255.255.255.253 count
+    750 match any any 172.18.138.229 count
+    760 match any any 172.18.139.17 count
+    770 match any any 172.18.139.20 count
+    780 match any any 172.20.136.107 count
+    790 match any any 172.20.166.170 count
+    800 match any any 172.20.167.103 count
+    810 match any any 172.20.167.26/31 count
+    820 match any any 172.20.167.89 count
+    830 match any any 172.20.225.133 count
+    840 match any any 172.20.225.74 count
+    850 match any any 172.20.225.99 count
+    860 match any any 172.20.225.71 count
+    870 match any any 172.20.225.72 count
+    880 match any any 10.69.96.198/31 count
+    890 match any any 10.69.96.200/31 count
+    900 match any any 10.69.96.202/31 count
+    910 match any any 10.69.96.204/31 count
+    920 match any any 10.69.96.206/31 count
+    930 match any any 10.77.96.198/31 count
+    940 match any any 10.77.96.200/31 count
+    950 match any any 10.77.96.202/31 count
+    960 match any any 10.77.96.204/31 count
+    970 match any any 10.77.96.206/31 count
+    980 match any any 10.77.96.208/31 count
+    990 match any any 10.77.96.210 count
+    1000 comment match access-group name QOSa_tanium
+    1010 match any any 151.140.13.47 count
+    1020 match any any 151.140.102.169 count
+    1030 match any any 151.140.102.170 count
+    1040 match any any 151.140.103.0 count
+    1050 match any any 151.140.84.204/31 count
+    1060 match any any 151.140.84.206 count
+    1070 match any any 151.140.4.29 count
+    1080 match any any 10.77.107.71 count
+    1090 match any any 10.77.99.6/31 count
+    1100 match any any 10.77.99.70/31 count
+    1110 match tcp any any eq 17472 count
+    1120 match tcp any any eq 17477 count
+    1130 comment match access-group name QOSa_mozy time-range CLOUD_DAYS
+    1140 match ip any 65.44.121.0/24 count
+    1150 match ip any 74.112.144.0/21 count
+    1160 match ip any 173.243.48.0/20 count
+    1170 match ip any 193.120.226.0/24 count
+    1180 match ip any 193.120.29.220/30 count
+    1190 match ip any 193.120.29.224/30 count
+    1200 match tcp 1.1.1.1 1.1.1.2 eq 80 count
+    1380 comment object-group network CROWDSTRIKE
+    1390 match any any 13.56.121.58 count
+    1400 match any any 13.56.127.239 count
+    1410 match any any 13.57.54.63 count
+    1420 match any any 4.67.17.131 count
+    1430 match any any 50.18.194.39 count
+    1440 match any any 50.18.198.237 count
+    1450 match any any 52.52.117.52 count
+    1460 match any any 52.52.119.33 count
+    1470 match any any 52.52.149.168 count
+    1480 match any any 52.52.239.58 count
+    1490 match any any 52.53.77.89 count
+    1500 match any any 52.8.134.130 count
+    1510 match any any 52.8.141.1 count
+    1520 match any any 52.8.160.82 count
+    1530 match any any 52.8.172.89 count
+    1540 match any any 52.8.173.58 count
+    1550 match any any 52.8.19.75 count
+    1560 match any any 52.8.32.113 count
+    1570 match any any 52.8.45.162 count
+    1580 match any any 52.8.5.240 count
+    1590 match any any 52.8.54.244 count
+    1600 match any any 52.8.61.206 count
+    1610 match any any 52.9.104.148 count
+    1620 match any any 52.9.212.176 count
+    1630 match any any 52.9.77.209 count
+    1640 match any any 52.9.82.94 count
+    1650 match any any 52.9.87.98 count
+    1660 match any any 54.183.105.3 count
+    1670 match any any 54.183.120.141 count
+    1680 match any any 54.183.122.156 count
+    1690 match any any 54.183.135.80 count
+    1700 match any any 54.183.140.32 count
+    1710 match any any 54.183.142.105 count
+    1720 match any any 54.183.148.116 count
+    1730 match any any 54.183.148.43 count
+    1740 match any any 54.183.215.154 count
+    1750 match any any 54.183.234.42 count
+    1760 match any any 54.183.24.162 count
+    1770 match any any 54.183.252.86 count
+    1780 match any any 54.183.34.154 count
+    1790 match any any 54.183.39.68 count
+    1800 match any any 54.183.51.31 count
+    1810 match any any 54.183.51.69 count
+    1820 match any any 54.183.52.221 count
+    1830 match any any 54.193.117.199 count
+    1840 match any any 54.193.27.226 count
+    1850 match any any 54.193.29.47 count
+    1860 match any any 54.193.67.98 count
+    1870 match any any 54.193.86.245 count
+    1880 match any any 54.193.87.57 count
+    1890 match any any 54.193.90.171 count
+    1900 match any any 54.193.93.19 count
+    1910 match any any 54.215.131.232 count
+    1920 match any any 54.215.154.80 count
+    1930 match any any 54.215.169.199 count
+    1940 match any any 54.215.169.38 count
+    1950 match any any 54.215.170.42 count
+    1960 match any any 54.215.176.108 count
+    1970 match any any 54.215.183.157 count
+    1980 match any any 54.215.226.55 count
+    1990 match any any 54.219.112.243 count
+    2000 match any any 54.219.115.12 count
+    2010 match any any 54.219.137.54 count
+    2020 match any any 54.219.140.50 count
+    2030 match any any 54.219.141.250 count
+    2040 match any any 54.219.145.181 count
+    2050 match any any 54.219.147.253 count
+    2060 match any any 54.219.148.161 count
+    2070 match any any 54.219.149.89 count
+    2080 match any any 54.219.149.92 count
+    2090 match any any 54.219.151.1 count
+    2100 match any any 54.219.151.27 count
+    2110 match any any 54.219.153.248 count
+    2120 match any any 54.219.158.53 count
+    2130 match any any 54.219.159.84 count
+    2140 match any any 54.219.161.141 count
+    2150 match any any 54.219.179.25 count
+    2160 match any any 54.241.138.180 count
+    2170 match any any 54.241.146.67 count
+    2180 match any any 54.241.148.127 count
+    2190 match any any 54.241.150.134 count
+    2200 match any any 54.241.161.242 count
+    2210 match any any 54.241.161.60 count
+    2220 match any any 54.241.162.180 count
+    2230 match any any 54.241.162.64 count
+    2240 match any any 54.241.164.212 count
+    2250 match any any 54.241.175.140 count
+    2260 match any any 54.241.175.52 count
+    2270 match any any 54.241.179.52 count
+    2280 match any any 54.241.181.242 count
+    2290 match any any 54.241.181.78 count
+    2300 match any any 54.241.182.78 count
+    2310 match any any 54.241.183.151 count
+    2320 match any any 54.241.183.229 count
+    2330 match any any 54.241.183.232 count
+    2340 match any any 54.241.184.161 count
+    2350 match any any 54.241.185.201 count
+    2360 match any any 54.241.186.124 count
+    2370 match any any 54.241.197.58 count
+    2380 match any any 54.67.105.202 count
+    2390 match any any 54.67.108.17 count
+    2400 match any any 54.67.114.188 count
+    2410 match any any 54.67.119.89 count
+    2420 match any any 54.67.122.238 count
+    2430 match any any 54.67.123.150 count
+    2440 match any any 54.67.123.234 count
+    2450 match any any 54.67.24.156 count
+    2460 match any any 54.67.26.184 count
+    2470 match any any 54.67.33.233 count
+    2480 match any any 54.67.4.108 count
+    2490 match any any 54.67.41.192 count
+    2500 match any any 54.67.48.56 count
+    2510 match any any 54.67.5.136 count
+    2520 match any any 54.67.51.32 count
+    2530 match any any 54.67.54.116 count
+    2540 match any any 54.67.6.201 count
+    2550 match any any 54.67.68.88 count
+    2560 match any any 54.67.72.218 count
+    2570 match any any 54.67.78.134 count
+    2580 match any any 54.67.92.206 count
+    2590 match any any 54.67.96.255 count
+    2600 match any any 54.67.99.247 count
+    2610 match any any 52.43.73.53 count
+    2620 match any any 35.164.23.230 count
+    2630 comment match access-group name QOSa_rubrik
+    2640 match any any 10.72.64.0/24 count
+    2650 match any any 10.64.64.0/24 count
+class ip QOS-m-business-af21
+    10 comment access-group name QOSa_grid-apps
+    20 match any any 151.140.107.0/24 count
+    30 match any any 151.140.120.13 count
+    40 match any any 151.140.120.14/31 count
+    50 match any any 151.140.120.16/28 count
+    60 match any any 151.140.120.32/28 count
+    70 match any any 151.140.120.48 count
+    80 match any any 151.140.120.101 count
+    90 match any any 151.140.120.102 count
+    100 match any any 151.140.120.107 count
+    110 match any any 151.140.120.108/30 count
+    120 match any any 151.140.120.112/28 count
+    130 match any any 151.140.120.128/26 count
+    140 match any any 151.140.120.192/29 count
+    150 match any any 151.140.120.200 count
+    160 match any any 151.140.4.144/28 count
+    170 match any any 151.140.4.160/27 count
+    180 match any any 151.140.4.192/27 count
+    190 match any any 151.140.4.224/28 count
+    200 match any any 151.140.4.240/29 count
+    210 match any any 151.140.4.248/31 count
+    220 match any any 151.140.64.80/28 count
+    230 match any any 151.140.64.96/30 count
+    240 match any any 151.140.64.255 count
+    250 match any any 151.140.65.138 count
+    260 match any any 151.140.65.140 count
+    270 match any any 151.140.65.2 count
+    280 match any any 151.140.65.194 count
+    290 match any any 151.140.65.203 count
+    300 match any any 151.140.65.231 count
+    310 match any any 151.140.65.232/29 count
+    320 match any any 151.140.66.120/31 count
+    330 match any any 151.140.66.191 count
+    340 match any any 151.140.66.199 count
+    350 match any any 151.140.66.251 count
+    360 match any any 151.140.66.252/30 count
+    370 match any any 151.140.67.1 count
+    380 match any any 151.140.67.2/31 count
+    390 match any any 151.140.67.4/30 count
+    400 match any any 151.140.67.8/30 count
+    410 match any any 151.140.67.12/30 count
+    420 match any any 151.140.67.16/28 count
+    430 match any any 151.140.67.32/27 count
+    440 match any any 151.140.67.64/26 count
+    450 match any any 151.140.67.190 count
+    460 match any any 151.140.67.199 count
+    470 match any any 151.140.67.200/29 count
+    480 match any any 151.140.67.209 count
+    490 match any any 151.140.67.210 count
+    500 match any any 151.140.67.216/29 count
+    510 match any any 151.140.67.224/28 count
+    520 match any any 151.140.67.240/29 count
+    530 match any any 151.140.80.0/26 count
+    540 match any any 151.140.84.40/29 count
+    550 match any any 151.140.84.48/28 count
+    560 match any any 151.140.84.64/29 count
+    570 match any any 151.140.84.72/30 count
+    580 match any any 151.140.85.0/26 count
+    590 match any any 151.140.85.64/27 count
+    600 match any any 151.140.85.96/30 count
+    610 match any any 151.140.85.100 count
+    620 match any any 151.140.96.0/24 count
+    630 match any any 151.140.97.0/24 count
+    640 match any any 151.140.98.0/24 count
+    650 match any any 165.130.166.105 count
+    660 match any any 165.130.166.126/255.255.247.255 count
+    670 match any any 165.130.166.131/255.255.247.255 count
+    680 match any any 165.130.166.182/255.255.247.255 count
+    690 match any any 165.130.166.214/255.255.247.255 count
+    700 match any any 165.130.166.220/255.255.247.255 count
+    710 match any any 165.130.166.30/255.255.247.255 count
+    720 match any any 165.130.166.40/255.255.247.255 count
+    730 match any any 165.130.167.111/255.255.247.255 count
+    740 match any any 165.130.167.12/255.255.247.255 count
+    750 match any any 165.130.167.250/255.255.247.255 count
+    760 match any any 165.130.188.10 count
+    770 match any any 165.130.188.14 count
+    780 match any any 165.130.188.17 count
+    790 match any any 165.130.188.18 count
+    800 match any any 165.130.188.21/255.255.255.253 count
+    810 match any any 165.130.188.24/31 count
+    820 match any any 165.130.188.154 count
+    830 match any any 165.130.188.159 count
+    840 match any any 165.130.188.160/27 count
+    850 match any any 165.130.188.223 count
+    860 match any any 165.130.230.147 count
+    870 match any any 165.130.230.148 count
+    880 match any any 165.130.230.151 count
+    890 match any any 165.130.230.235 count
+    900 match any any 165.130.238.147 count
+    910 match any any 165.130.238.148 count
+    920 match any any 165.130.238.151 count
+    930 match any any 165.130.238.235 count
+    940 match any any 207.11.34.196 count
+    950 match any any 207.11.43.8/29 count
+    960 match any any 207.11.43.16/28 count
+    970 match any any 207.11.43.140/30 count
+    980 match any any 207.11.43.144/28 count
+    990 comment access-group name QOSa_ldap
+    1000 match udp any any eq 389 count
+    1010 match tcp any eq 389 any count
+    1020 match tcp any eq 636 any count
+    1030 match tcp any eq 3268 any count
+    1040 match udp any eq 389 any count
+    1050 comment access-group name QOSa_amer-ad
+    1060 match tcp any any eq 445 count
+    1070 comment ip access-list extended QOSa_svs
+    1080 match any any 165.130.166.121 count
+    1090 match any any 165.130.174.121 count
+    1100 match any any 165.130.166.122 count
+    1110 match any any 165.130.174.122 count
+    1120 match any any 165.130.174.33 count
+    1130 match any any 165.130.174.32 count
+    1140 match any any 165.130.189.16 count
+    1150 match any any 165.130.213.205 count
+    1160 match tcp any eq 12040 any count
+    1170 match tcp any eq 13040 any count
+    1180 comment ip access-list extended QOSa_virtkitchen
+    1190 match any any 165.130.174.233 count
+    1200 match any any 165.130.166.233 count
+    1210 comment ip access-list extended QOSa_fast
+    1220 match any any 165.130.166.238 count
+    1231 match any any 165.130.174.238 count
+    1240 match any any 165.130.174.201 count
+    1250 match any any 165.130.166.201 count
+    1260 comment match access-group name QOSa_sap
+    1270 match any any 151.140.64.114/31 count
+    1280 match any any 165.130.80.110/31 count
+    1290 match any any 165.130.80.112/30 count
+    1300 match any any 151.140.76.174 count
+    1310 match any any 165.130.166.245 count
+    1320 match any any 165.130.170.44 count
+    1330 match any any 165.130.174.245 count
+    1340 match any any 165.130.178.44 count
+    1350 match any any 165.130.230.122 count
+    1360 match any any 165.130.230.135 count
+    1370 match any any 165.130.230.189 count
+    1380 match any any 165.130.230.210 count
+    1390 match any any 165.130.230.77 count
+    1400 match any any 165.130.230.91 count
+    1410 match any any 165.130.238.135 count
+    1420 match any any 165.130.238.189 count
+    1430 match any any 165.130.238.210 count
+    1440 match any any 165.130.238.77 count
+    1450 match any any 165.130.238.91 count
+    1460 match any any 165.130.80.109 count
+    1470 match any any 165.130.80.20 count
+    1480 match any any 165.130.80.30 count
+    1490 match any any 165.130.80.44 count
+    1500 match any any 165.130.80.48 count
+    1510 match any any 165.130.80.52 count
+    1520 match any any 165.130.80.60 count
+    1530 match any any 165.130.80.66 count
+    1540 comment access-group name QOSa_discountsvc
+    1550 match any any 130.211.6.247 count
+class ip QOS-m-buslopri-af22
+    10 comment match access-group name QOSa_citrix
+    20 match any any 151.140.49.180/30 count
+    30 match any any 151.140.49.184/29 count
+    40 match any any 151.140.49.192/31 count
+    50 match any any 151.140.49.197 count
+    60 match any any 151.140.49.198/31 count
+    70 match any any 151.140.49.200/29 count
+    80 match any any 151.140.49.208/29 count
+    90 match any any 151.140.49.216/30 count
+    100 match any any 151.140.77.164/31 count
+    110 match any any 151.140.77.168/31 count
+    120 match any any 151.140.77.174 count
+    130 match any any 151.140.77.178/31 count
+    140 match any any 151.140.77.180/30 count
+    150 match any any 151.140.77.184 count
+    160 match any any 165.130.32.214 count
+    170 match any any 172.26.28.0/24 count
+    180 match any any 151.140.49.195 count
+    190 match any any 151.140.49.196 count
+    200 match any any 151.140.77.171 count
+    210 match any any 151.140.77.177 count
+    220 match any any 151.140.77.197 count
+    230 match any any 151.140.120.128/26 count
+    240 match any any 151.140.120.192/29 count
+    250 match any any 151.140.120.200 count
+    260 match any any 151.140.4.144/28 count
+    270 match any any 151.140.4.160/27 count
+    280 match any any 151.140.4.192/27 count
+    290 match any any 151.140.4.224/28 count
+    300 match any any 151.140.4.240/29 count
+    310 match any any 151.140.4.248/31 count
+    320 match any any 151.140.64.80/28 count
+    330 match any any 151.140.64.96/30 count
+    340 match any any 151.140.64.255 count
+    350 match any any 151.140.65.138 count
+    360 match any any 151.140.65.140 count
+    370 match any any 151.140.65.2 count
+    380 match any any 151.140.65.194 count
+    390 match any any 151.140.65.203 count
+    400 match any any 151.140.65.231 count
+    410 match any any 151.140.65.232/29 count
+    420 match any any 151.140.66.120/31 count
+    430 match any any 151.140.66.191 count
+    440 match any any 151.140.66.199 count
+    450 match any any 151.140.66.251 count
+    460 match any any 151.140.66.252/30 count
+    470 match any any 151.140.67.1 count
+    480 match any any 151.140.67.2/31 count
+    490 match any any 151.140.67.4/30 count
+    500 match any any 151.140.67.8/30 count
+    510 match any any 151.140.67.12/30 count
+    520 match any any 151.140.67.16/28 count
+    530 match any any 151.140.67.32/27 count
+    540 match any any 151.140.67.64/26 count
+    550 match any any 151.140.67.190 count
+    560 match any any 151.140.67.199 count
+    570 match any any 151.140.67.200/29 count
+    580 match any any 151.140.67.209 count
+    590 match any any 151.140.67.210 count
+    600 match any any 151.140.67.216/29 count
+    610 match any any 151.140.67.224/28 count
+    620 match any any 151.140.67.240/29 count
+    630 match any any 151.140.80.0/26 count
+    640 match any any 151.140.84.40/29 count
+    650 match any any 151.140.84.48/28 count
+    660 match any any 151.140.84.64/29 count
+    670 match any any 151.140.84.72/30 count
+    680 match any any 151.140.85.0/26 count
+    690 match any any 151.140.85.64/27 count
+    700 match any any 151.140.85.96/30 count
+    710 match any any 151.140.85.100 count
+    720 match any any 151.140.96.0/24 count
+    730 match any any 151.140.97.0/24 count
+    740 match any any 151.140.98.0/24 count
+    750 match any any 165.130.166.105 count
+    760 match any any 165.130.166.126/255.255.247.255 count
+    770 match any any 165.130.166.131/255.255.247.255 count
+    780 match any any 165.130.166.182/255.255.247.255 count
+    790 match any any 165.130.166.214/255.255.247.255 count
+    800 match any any 165.130.166.220/255.255.247.255 count
+    810 match any any 165.130.166.30/255.255.247.255 count
+    820 match any any 165.130.166.40/255.255.247.255 count
+    830 match any any 165.130.167.111/255.255.247.255 count
+    840 match any any 165.130.167.12/255.255.247.255 count
+    850 match any any 165.130.167.250/255.255.247.255 count
+    860 match any any 165.130.188.10 count
+    870 match any any 165.130.188.14 count
+    880 match any any 165.130.188.17 count
+    890 match any any 165.130.188.18 count
+    900 match any any 165.130.188.21/255.255.255.253 count
+    910 match any any 165.130.188.24/31 count
+    920 match any any 165.130.188.154 count
+    930 match any any 165.130.188.159 count
+    940 match any any 165.130.188.160/27 count
+    950 match any any 165.130.188.223 count
+    960 match any any 165.130.230.147 count
+    970 match any any 165.130.230.148 count
+    980 match any any 165.130.230.151 count
+    990 match any any 165.130.230.235 count
+    1000 match any any 165.130.238.147 count
+    1010 match any any 165.130.238.148 count
+    1020 match any any 165.130.238.151 count
+    1030 match any any 165.130.238.235 count
+    1040 match any any 207.11.34.196 count
+    1050 match any any 207.11.43.8/29 count
+    1060 match any any 207.11.43.16/28 count
+    1070 match any any 207.11.43.140/30 count
+    1080 match any any 207.11.43.144/28 count
+    1090 comment match access-group name QOSa_myapron
+    1100 match any any 165.130.166.87/255.255.247.255 count
+    1110 match any any 165.130.166.78/255.255.247.255 count
+    1120 match any any 165.130.230.78/255.255.247.255 count
+    1130 match any any 165.130.167.123/255.255.247.255 count
+    1140 match any any 165.130.230.87/255.255.247.255 count
+    1150 comment match access-group name QOSa_spacewalk
+    1160 match any any 10.66.112.134/31 count
+    1170 match any any 10.66.112.136/30 count
+    1180 match any any 10.66.112.140/31 count
+    1190 match any any 10.66.176.134 count
+    1200 match any any 10.74.112.134/31 count
+    1210 match any any 10.74.112.136/30 count
+    1220 match any any 10.74.112.140 count
+    1230 match any any 10.74.176.134 count
+    1240 match any any 151.140.101.112 count
+    1250 match any any 151.140.102.148/31 count
+    1260 match any any 151.140.12.140 count
+    1270 match any any 151.140.14.57 count
+    1280 match any any 151.140.14.58 count
+    1290 match any any 151.140.48.194/31 count
+    1300 match any any 151.140.50.12/31 count
+    1310 match any any 151.140.50.56 count
+    1320 match any any 151.140.78.135 count
+    1330 match any any 151.140.78.66/31 count
+    1340 match any any 151.140.84.195 count
+    1350 match any any 151.140.84.196 count
+    1360 match any any 165.130.167.21 count
+    1370 match any any 172.19.129.42 count
+    1380 match any any 151.140.84.200/31 count
+    1390 comment match access-group name QOSa_puppet
+    1400 match any any 10.66.1.135 count
+    1410 match any any 10.66.1.136/29 count
+    1420 match any any 10.66.1.144/30 count
+    1430 match any any 10.66.177.70/31 count
+    1440 match any any 10.74.1.135 count
+    1450 match any any 10.74.1.144/30 count
+    1460 match any any 10.74.177.70/31 count
+    1470 match any any 151.140.101.69 count
+    1480 match any any 151.140.101.70 count
+    1490 match any any 151.140.102.174 count
+    1500 match any any 165.130.170.108/31 count
+    1510 match any any 151.140.101.67 count
+    1520 match any any 151.140.101.68/31 count
+    1530 match any any 151.140.102.174/31 count
+    1540 match any any 151.140.102.177 count
+    1550 match any any 151.140.102.178/31 count
+    1560 match any any 151.140.12.76/30 count
+    1570 match any any 151.140.14.71 count
+    1580 match any any 151.140.14.75 count
+    1590 match any any 151.140.50.19 count
+    1600 match any any 151.140.50.20/31 count
+    1610 match any any 151.140.50.22 count
+    1620 match any any 151.140.50.220/31 count
+    1630 match any any 151.140.50.223 count
+    1640 match any any 151.140.50.224/31 count
+    1650 match any any 151.140.78.75 count
+    1660 match any any 151.140.78.76/31 count
+    1670 match any any 151.140.78.78 count
+    1680 match any any 151.140.85.127 count
+    1690 match any any 151.140.85.128 count
+    1700 comment match access-group name QOSa_vcenter
+    1710 match any any 151.140.0.125 count
+    1720 match any any 151.140.0.126/31 count
+    1730 match any any 151.140.0.178/31 count
+    1740 match any any 151.140.0.180 count
+    1750 match any any 151.140.13.114/31 count
+    1760 match any any 151.140.13.116/31 count
+    1770 match any any 151.140.48.148/31 count
+    1780 match any any 151.140.48.150 count
+    1790 match any any 151.140.65.3 count
+    1800 match any any 151.140.65.221 count
+    1810 match any any 151.140.65.222/31 count
+    1820 match any any 151.140.79.149 count
+    1830 match any any 151.140.79.150 count
+    1840 match any any 151.140.79.17 count
+    1850 match any any 151.140.79.18 count
+    1860 match any any 151.140.104.144 count
+    1870 match any any 151.140.104.163 count
+    1880 match any any 151.140.104.164/31 count
+    1890 comment match access-group name QOSa_kronos
+    1900 match any any 165.130.166.251 count
+    1910 match any any 165.130.166.113 count
+    1920 match any any 151.140.76.245 count
+    1930 match any any 165.130.166.25 count
+    1940 match any any 207.11.34.250 count
+    1950 comment match access-group name QOSa_activemq
+    1960 match any any 151.140.1.150/31 count
+    1970 match any any 151.140.1.153 count
+    1980 match any any 151.140.48.209 count
+    1990 match any any 151.140.48.210/31 count
+    2000 match any any 151.140.48.212 count
+    2010 match any any 151.140.66.151 count
+    2020 match any any 151.140.66.152/31 count
+    2030 match any any 151.140.66.154 count
+    2040 match any any 151.140.105.132/30 count
+    2050 match any any 165.130.188.86 count
+    2060 match any any 165.130.189.38 count
+    2070 match any any 165.130.189.181 count
+    2080 match any any 165.130.189.182 count
+    2090 match any any 165.130.213.238/31 count
+    2100 match any any 165.130.223.54 count
+    2110 match any any 165.130.223.106 count
+    2120 comment match access-group name QOSa_o365_sharepoint
+    2130 match any any 104.146.128.0/255.255.128.0 count
+    2140 match any any 13.107.136.0/255.255.252.0 count
+    2150 match any any 150.171.40.0/255.255.252.0 count
+    2160 match any any 40.108.128.0/255.255.128.0 count
+    2170 match any any 52.104.0.0/255.252.0.0 count
+class ip QOS-m-critical-af31
+    10 match any any any dscp AF31 count
+    20 comment ip access-list extended QOSa_tandem
+    30 match any any 10.17.64.0/255.255.254.0 count
+    40 match any any 10.16.92.0/255.255.254.0 count
+    50 match any any 165.130.166.217/255.255.247.255 count
+    60 match any any 165.130.230.217/255.255.247.255 count
+    70 match any any 165.130.167.34/255.255.247.255 count
+    80 match any any 165.130.230.226/255.255.247.255 count
+    90 match any any 165.130.166.76/255.255.247.255 count
+    100 match any any 165.130.230.76/255.255.247.255 count
+    110 match any any 165.130.166.80/255.255.247.255 count
+    120 match any any 165.130.166.75/255.255.247.255 count
+    130 match any any 165.130.163.1/255.255.247.255 count
+    140 match any any 165.130.166.132 count
+    150 match any any 165.130.166.84/255.255.247.255 count
+    160 match any any 165.130.100.3/255.255.247.255 count
+    170 match any any 165.130.100.4/255.255.247.255 count
+    180 match any any 172.26.84.31 count
+    190 match any any 172.26.184.31 count
+    200 match any any 165.130.230.10/255.255.247.255 count
+    210 match any any 165.130.230.11/255.255.247.255 count
+    220 match any any 165.130.230.12/255.255.247.255 count
+    230 match any any 165.130.167.26/255.255.247.255 count
+    240 match any any 165.130.167.27/255.255.247.255 count
+    250 match any any 165.130.167.28/255.255.247.255 count
+    260 match any any 172.26.84.35 count
+    270 match any any 172.26.84.135 count
+    280 match any any 172.26.184.35 count
+    290 match any any 172.26.184.135 count
+    300 match any any 172.26.84.36 count
+    310 match any any 172.26.84.136 count
+    320 match any any 172.26.184.36 count
+    330 match any any 172.26.184.136 count
+    340 match any any 172.26.84.37 count
+    350 match any any 172.26.84.137 count
+    360 match any any 172.26.184.37 count
+    370 match any any 172.26.184.137 count
+    380 comment access-group name QOSa_privatelabel
+    390 match any any 169.195.178.54 count
+    400 match any any 169.193.202.55 count
+    410 match any any 169.193.202.54 count
+    420 match any any 169.193.202.51 count
+    430 match any any 169.193.157.207 count
+    440 match any any 169.193.157.208 count
+    450 match any any 169.193.157.243 count
+    460 match any any 169.193.157.244 count
+    470 match any any 169.185.178.54 count
+    480 match any any 169.185.0.0/255.255.0.0 count
+    490 match any any 169.186.0.0/255.254.0.0 count
+    500 match any any 169.188.0.0/255.252.0.0 count
+    510 match any any 169.192.0.0/255.252.0.0 count
+class ip QOS-m-criticallopri-af33
+    10 match any any any dscp AF33 count
+    20 comment match access-group name QOSa_nac-ise
+    30 match any any 151.140.101.218 count
+    40 match any any 151.140.2.179 count
+    50 match any any 151.140.105.218 count
+    60 match any any 151.140.1.201 count
+    70 match any any 151.140.1.156/31 count
+    80 match any any 151.140.100.153 count
+    90 match any any 151.140.100.162/31 count
+    100 match any any 151.140.100.164 count
+    110 match any any 151.140.102.104/31 count
+    120 match any any 151.140.12.148 count
+    130 match any any 151.140.14.15 count
+    140 match any any 151.140.14.16/28 count
+    150 match any any 151.140.3.183 count
+    160 match any any 151.140.3.187 count
+    170 match any any 151.140.3.188 count
+    180 match any any 151.140.3.209 count
+    190 match any any 151.140.3.211 count
+    200 match any any 151.140.77.226 count
+    210 match any any 151.140.78.132 count
+    220 match any any 151.140.78.166 count
+    230 match any any 151.140.78.172 count
+    240 match any any 151.140.79.111 count
+    250 match any any 151.140.79.131 count
+    260 match any any 151.140.79.233 count
+    270 match any any 151.140.79.234/31 count
+    280 match any any 151.140.79.236/30 count
+    290 match any any 151.140.79.240/31 count
+    300 match any any 151.140.79.242 count
+    310 match any any 151.140.79.52/31 count
+    320 match any any 172.20.167.41 count
+    330 match any any 151.140.107.1 count
+    340 match any any 151.140.2.230 count
+    350 comment access-group name QOSa_ssh_loop
+    360 ignore any any any fragment count
+    370 match tcp 10.125.0.0/16 eq 22 151.140.0.0/16 count
+    380 match tcp 10.125.0.0/16 eq 22 165.130.0.0/16 count
+    390 match tcp 10.121.0.0/16 eq 22 151.140.0.0/16 count
+    400 match tcp 10.121.0.0/16 eq 22 165.130.0.0/16 count
+    410 match tcp 10.122.0.0/16 eq 22 151.140.0.0/16 count
+    420 match tcp 10.122.0.0/16 eq 22 165.130.0.0/16 count
+    430 match tcp 10.125.0.0/16 eq 22 172.19.0.0/16 count
+    440 match tcp 10.121.0.0/16 eq 22 172.19.0.0/16 count
+    450 match tcp 10.122.0.0/16 eq 22 172.19.0.0/16 count
+    460 match tcp 10.125.0.0/16 eq 22 207.11.21.0/24 count
+    470 match tcp 10.121.0.0/16 eq 22 207.11.21.0/24 count
+    480 match tcp 10.122.0.0/16 eq 22 207.11.21.0/24 count
+    490 match tcp 10.125.0.0/16 eq 22 207.11.12.0/24 count
+    500 match tcp 10.121.0.0/16 eq 22 207.11.12.0/24 count
+    510 match tcp 10.122.0.0/16 eq 22 207.11.12.0/24 count
+    520 match tcp 10.128.5.160/255.128.7.248 eq 22 151.140.0.0/16 count
+    530 match tcp 10.128.5.160/255.128.7.248 eq 22 165.130.0.0/16 count
+    540 match tcp 10.128.5.160/255.128.7.248 eq 22 207.11.21.0/24 count
+    550 match tcp 10.128.5.160/255.128.7.248 eq 22 207.11.12.0/24 count
+    560 match tcp 10.128.5.160/255.128.7.248 eq 22 172.19.0.0/16 count
+class ip QOS-m-thdunk-af23
+    10 comment match access-group name QOSa_thdunk
+    20 match any any 165.130.0.0/16 count
+    30 match any any 207.11.0.0/17 count
+    40 match any any 10.0.0.0/8 count
+    50 match any any 151.140.0.0/16 count
+    60 match any any 192.168.0.0/16 count
+    70 match any any 172.16.0.0/12 count
+class ip QOS-m-video-af41
+    10 comment ip access-list extended QOSa_webex
+    20 match udp any any eq 9000 count
+    30 match any any 62.109.192.0/18 count
+    40 match any any 64.68.96.0/19 count
+    50 match any any 66.114.160.0/20 count
+    60 match any any 66.163.32.0/19 count
+    70 match any any 69.26.160.0/19 count
+    80 match any any 114.29.192.0/19 count
+    90 match any any 150.253.128.0/17 count
+    100 match any any 170.72.0.0/16 count
+    110 match any any 170.133.128.0/18 count
+    120 match any any 173.39.224.0/19 count
+    130 match any any 173.243.0.0/20 count
+    140 match any any 207.182.160.0/19 count
+    150 match any any 209.197.192.0/19 count
+    160 match any any 210.4.192.0/20 count
+    170 match any any 216.151.128.0/19 count
+class ip QOS-m-voice-ef
+    5 match any any 10.16.46.254 count
+    10 comment ip access-list extended QOSa_voip-media
+    20 match udp 10.128.3.40/255.128.7.255 range 8000 48200 any count
+    30 match udp 10.128.5.0/255.128.7.128 range 8000 48200 any count
+    40 match udp 10.128.6.0/255.128.7.128 range 8000 48200 any count
+    50 match udp 10.128.7.64/255.128.7.192 range 8000 48200 any count
+    60 match udp any 10.128.3.40/255.128.7.255 range 8000 48200 count
+    70 match udp any 10.128.5.0/255.128.7.128 range 8000 48200 count
+    80 match udp any 10.128.6.0/255.128.7.128 range 8000 48200 count
+    90 match udp any 10.128.7.64/255.128.7.192 range 8000 48200 count
+    100 match udp any 10.33.20.0/24 range 8000 48200 count
+    110 match udp any 10.23.20.0/24 range 8000 48200 count
+    120 comment ip access-list extended QOSa_voip-signaling
+    130 match udp any 10.33.20.0/24 eq 5060 count
+    140 match udp any 10.23.20.0/24 eq 5060 count
+    150 match tcp any 10.33.20.0/24 eq 5060 count
+    160 match tcp any 10.23.20.0/24 eq 5060 count
+    170 match tcp any 10.33.20.0/24 range 2000 2002 count
+    180 match tcp any 10.23.20.0/24 range 2000 2002 count
+class ip QOS-q-af1-background
+    10 match any any any dscp CS1 count
+    20 match any any any dscp AF11 count
+    30 match any any any dscp AF12 count
+    40 match any any any dscp AF13 count
+class ip QOS-q-af1-bulkTCP
+    10 comment match access-group name QOSa_monitorTCP
+    20 match tcp any any eq 9997 count
+    30 match any any 165.130.1.8 count
+    40 match any any 165.130.1.16 count
+    50 match any any 165.130.1.18 count
+    60 match any any 165.130.1.19 count
+    70 match any any 165.130.1.20 count
+    80 match any any 165.130.1.21 count
+    90 match tcp any any eq 162 count
+    100 match tcp any eq 162 any count
+    110 match tcp any any eq 1270 count
+    111 match tcp any any eq 5723 count
+    120 match tcp any eq 1270 any count
+    121 match tcp any eq 5723 any count
+class ip QOS-q-af1-bulkUDP
+    10 match udp any any eq 514 count
+class ip QOS-q-af1-crowdstrike
+    10 match any any 13.56.121.58 count
+    20 match any any 13.56.127.239 count
+    30 match any any 13.57.54.63 count
+    40 match any any 4.67.17.131 count
+    50 match any any 50.18.194.39 count
+    60 match any any 50.18.198.237 count
+    70 match any any 52.52.117.52 count
+    80 match any any 52.52.119.33 count
+    90 match any any 52.52.149.168 count
+    100 match any any 52.52.239.58 count
+    110 match any any 52.53.77.89 count
+    120 match any any 52.8.134.130 count
+    130 match any any 52.8.141.1 count
+    140 match any any 52.8.160.82 count
+    150 match any any 52.8.172.89 count
+    160 match any any 52.8.173.58 count
+    170 match any any 52.8.19.75 count
+    180 match any any 52.8.32.113 count
+    190 match any any 52.8.45.162 count
+    200 match any any 52.8.5.240 count
+    210 match any any 52.8.54.244 count
+    220 match any any 52.8.61.206 count
+    230 match any any 52.9.104.148 count
+    240 match any any 52.9.212.176 count
+    250 match any any 52.9.77.209 count
+    260 match any any 52.9.82.94 count
+    270 match any any 52.9.87.98 count
+    280 match any any 54.183.105.3 count
+    290 match any any 54.183.120.141 count
+    300 match any any 54.183.122.156 count
+    310 match any any 54.183.135.80 count
+    320 match any any 54.183.140.32 count
+    330 match any any 54.183.142.105 count
+    340 match any any 54.183.148.116 count
+    350 match any any 54.183.148.43 count
+    360 match any any 54.183.215.154 count
+    370 match any any 54.183.234.42 count
+    380 match any any 54.183.24.162 count
+    390 match any any 54.183.252.86 count
+    400 match any any 54.183.34.154 count
+    410 match any any 54.183.39.68 count
+    420 match any any 54.183.51.31 count
+    430 match any any 54.183.51.69 count
+    440 match any any 54.183.52.221 count
+    450 match any any 54.193.117.199 count
+    460 match any any 54.193.27.226 count
+    470 match any any 54.193.29.47 count
+    480 match any any 54.193.67.98 count
+    490 match any any 54.193.86.245 count
+    500 match any any 54.193.87.57 count
+    510 match any any 54.193.90.171 count
+    520 match any any 54.193.93.19 count
+    530 match any any 54.215.131.232 count
+    540 match any any 54.215.154.80 count
+    550 match any any 54.215.169.199 count
+    560 match any any 54.215.169.38 count
+    570 match any any 54.215.170.42 count
+    580 match any any 54.215.176.108 count
+    590 match any any 54.215.183.157 count
+    600 match any any 54.215.226.55 count
+    610 match any any 54.219.112.243 count
+    620 match any any 54.219.115.12 count
+    630 match any any 54.219.137.54 count
+    640 match any any 54.219.140.50 count
+    650 match any any 54.219.141.250 count
+    660 match any any 54.219.145.181 count
+    670 match any any 54.219.147.253 count
+    680 match any any 54.219.148.161 count
+    690 match any any 54.219.149.89 count
+    700 match any any 54.219.149.92 count
+    710 match any any 54.219.151.1 count
+    720 match any any 54.219.151.27 count
+    730 match any any 54.219.153.248 count
+    740 match any any 54.219.158.53 count
+    750 match any any 54.219.159.84 count
+    760 match any any 54.219.161.141 count
+    770 match any any 54.219.179.25 count
+    780 match any any 54.241.138.180 count
+    790 match any any 54.241.146.67 count
+    800 match any any 54.241.148.127 count
+    810 match any any 54.241.150.134 count
+    820 match any any 54.241.161.242 count
+    830 match any any 54.241.161.60 count
+    840 match any any 54.241.162.180 count
+    850 match any any 54.241.162.64 count
+    860 match any any 54.241.164.212 count
+    870 match any any 54.241.175.140 count
+    880 match any any 54.241.175.52 count
+    890 match any any 54.241.179.52 count
+    900 match any any 54.241.181.242 count
+    910 match any any 54.241.181.78 count
+    920 match any any 54.241.182.78 count
+    930 match any any 54.241.183.151 count
+    940 match any any 54.241.183.229 count
+    950 match any any 54.241.183.232 count
+    960 match any any 54.241.184.161 count
+    970 match any any 54.241.185.201 count
+    980 match any any 54.241.186.124 count
+    990 match any any 54.241.197.58 count
+    1000 match any any 54.67.105.202 count
+    1010 match any any 54.67.108.17 count
+    1020 match any any 54.67.114.188 count
+    1030 match any any 54.67.119.89 count
+    1040 match any any 54.67.122.238 count
+    1050 match any any 54.67.123.150 count
+    1060 match any any 54.67.123.234 count
+    1070 match any any 54.67.24.156 count
+    1080 match any any 54.67.26.184 count
+    1090 match any any 54.67.33.233 count
+    1100 match any any 54.67.4.108 count
+    1110 match any any 54.67.41.192 count
+    1120 match any any 54.67.48.56 count
+    1130 match any any 54.67.5.136 count
+    1140 match any any 54.67.51.32 count
+    1150 match any any 54.67.54.116 count
+    1160 match any any 54.67.6.201 count
+    1170 match any any 54.67.68.88 count
+    1180 match any any 54.67.72.218 count
+    1190 match any any 54.67.78.134 count
+    1200 match any any 54.67.92.206 count
+    1210 match any any 54.67.96.255 count
+    1220 match any any 54.67.99.247 count
+    1230 match any any 52.43.73.53 count
+    1240 match any any 35.164.23.230 count
+class ip QOS-q-af2-business
+    10 match any any any dscp CS2 count
+    20 match any any any dscp AF21 count
+    30 match any any any dscp AF22 count
+class ip QOS-q-af23-thdunknown
+    10 match any any any dscp AF23 count
+    20 comment match access-group name QOSa_thdunk
+    30 match any any 165.130.0.0/16 count
+    40 match any any 207.11.0.0/17 count
+    50 match any any 10.128.0.0/8 count
+    60 match any any 151.140.0.0/16 count
+    70 match any any 151.140.0.0/16 count
+    80 match any any 192.168.0.0/16 count
+    90 match any any 172.16.0.0/12 count
+class ip QOS-q-af3-critical
+    10 match any any any dscp CS3 count
+    20 match any any any dscp AF31 count
+    30 match any any any dscp AF32 count
+    40 match any any any dscp AF33 count
+class ip QOS-q-af33-critlo
+    10 comment match access-group name QOSa_ssh_loop
+    20 ignore any any any fragment count
+    30 match tcp 10.125.0.0/16 eq 22 151.140.0.0/16 count
+    40 match tcp 10.125.0.0/16 eq 22 165.130.0.0/16 count
+    50 match tcp 10.121.0.0/16 eq 22 151.140.0.0/16 count
+    60 match tcp 10.121.0.0/16 eq 22 165.130.0.0/16 count
+    70 match tcp 10.122.0.0/16 eq 22 151.140.0.0/16 count
+    80 match tcp 10.122.0.0/16 eq 22 165.130.0.0/16 count
+    90 match tcp 10.125.0.0/16 eq 22 172.19.0.0/16 count
+    100 match tcp 10.121.0.0/16 eq 22 172.19.0.0/16 count
+    110 match tcp 10.122.0.0/16 eq 22 172.19.0.0/16 count
+    120 match tcp 10.125.0.0/16 eq 22 207.11.21.0/24 count
+    130 match tcp 10.121.0.0/16 eq 22 207.11.21.0/24 count
+    140 match tcp 10.122.0.0/16 eq 22 207.11.21.0/24 count
+    150 match tcp 10.125.0.0/16 eq 22 207.11.12.0/24 count
+    160 match tcp 10.121.0.0/16 eq 22 207.11.12.0/24 count
+    170 match tcp 10.122.0.0/16 eq 22 207.11.12.0/24 count
+    180 match tcp 10.128.5.160/255.128.7.248 eq 22 151.140.0.0/16 count
+    190 match tcp 10.128.5.160/255.128.7.248 eq 22 165.130.0.0/16 count
+    200 match tcp 10.128.5.160/255.128.7.248 eq 22 207.11.21.0/24 count
+    210 match tcp 10.128.5.160/255.128.7.248 eq 22 207.11.12.0/24 count
+    220 match tcp 10.128.5.160/255.128.7.248 eq 22 172.19.0.0/16 count
+    230 comment match access-group name QOSa_nac-ise
+    240 match any any 151.140.101.218 count
+    250 match any any 151.140.2.179 count
+    260 match any any 151.140.105.218 count
+    270 match any any 151.140.1.201 count
+    280 match any any 151.140.1.156/31 count
+    290 match any any 151.140.100.153 count
+    300 match any any 151.140.100.162/31 count
+    310 match any any 151.140.100.164 count
+    320 match any any 151.140.102.104/31 count
+    330 match any any 151.140.12.148 count
+    340 match any any 151.140.14.15 count
+    350 match any any 151.140.14.16/28 count
+    360 match any any 151.140.3.183 count
+    370 match any any 151.140.3.187 count
+    380 match any any 151.140.3.188 count
+    390 match any any 151.140.3.209 count
+    400 match any any 151.140.3.211 count
+    410 match any any 151.140.77.226 count
+    420 match any any 151.140.78.132 count
+    430 match any any 151.140.78.166 count
+    440 match any any 151.140.78.172 count
+    450 match any any 151.140.79.111 count
+    460 match any any 151.140.79.131 count
+    470 match any any 151.140.79.233 count
+    480 match any any 151.140.79.234/31 count
+    490 match any any 151.140.79.236/30 count
+    500 match any any 151.140.79.240/31 count
+    510 match any any 151.140.79.242 count
+    520 match any any 151.140.79.52/31 count
+    530 match any any 172.20.167.41 count
+    540 match any any 151.140.107.1 count
+    550 match any any 151.140.2.230 count
+class ip QOS-q-af4-video
+    10 match any any any dscp CS4 count
+    20 match any any any dscp AF41 count
+    30 match any any any dscp AF42 count
+    40 match any any any dscp AF43 count
+class ip QOS-q-cs0-sdwan-inet-traffic
+    10 comment match access-group name QOSa_all_sdwan_inet_tunnel_traffic
+    20 match any any 207.11.17.0/25 count
+    30 match any any 207.11.48.0/25 count
+    40 match any any 207.11.71.32/28 count
+    50 match any any 207.11.72.32/28 count
+    60 match any any 207.11.73.32/28 count
+    70 match any any 207.11.74.32/28 count
+    80 match any any 207.11.75.32/28 count
+class ip QOS-q-cs6-routing
+    20 match tcp any any eq 179 count
+    30 match tcp any eq 179 any count
+class ip QOS-q-ef-voice
+    10 match any any any dscp EF count
+class ip QOS-q-sdwan-control-traffic
+    10 match any any any dscp CS6 count
+class ip QOSa_monitorTCP
+class ip default
+    10 match any any any
+class ip non-client-nrt-class
+!-----QoS Policy--------
+policy ESX_TRUNKS
+	10 class ip SCCM_VLAN2 action cir kbps 750000 cbs 750000 exceed drop action dscp cs1
+	20 class ip SCCM_OTHER action cir kbps 150000 cbs 150000 exceed drop action dscp cs1
+policy QOS-P-marker
+    10 class ip QOS-m-voice-ef action local-priority 5 action dscp EF
+    20 class ip QOS-m-video-af41 action local-priority 4 action dscp AF41
+    30 class ip QOS-m-critical-af31 action local-priority 3 action dscp AF31
+    40 class ip QOS-m-criticallopri-af33 action local-priority 3 action dscp AF33
+    50 class ip QOS-m-business-af21 action local-priority 2 action dscp AF21
+    60 class ip QOS-m-buslopri-af22 action local-priority 2 action dscp AF22
+    70 class ip QOS-m-bulk-af11 action local-priority 0 action dscp AF11
+    80 class ip QOS-m-thdunk-af23 action local-priority 2 action dscp AF23
+    90 class ip default action local-priority 1 action dscp CS0
+policy QOS-P-mpls
+    10 class ip QOS-q-cs6-routing action dscp CS6
+    20 class ip QOS-q-ef-voice
+    30 class ip QOS-q-af4-video
+    40 class ip QOS-q-af3-critical
+    50 class ip QOS-q-af33-critlo action dscp AF33
+    60 class ip QOS-q-af2-business
+    70 class ip QOS-q-af1-bulkUDP action dscp AF11
+    80 class ip QOS-q-af1-bulkTCP action dscp AF11
+    90 class ip QOS-q-af1-crowdstrike
+    100 class ip QOS-q-af1-background
+    110 class ip QOS-q-af23-thdunknown
+    120 class ip default
+policy QOS-P-sdwan-mpls
+    10 class ip QOS-q-cs6-routing action dscp CS6
+    20 class ip QOS-q-ef-voice
+    30 class ip QOS-q-af4-video
+    40 class ip QOS-q-af3-critical
+    50 class ip QOS-q-af33-critlo action dscp AF33
+    60 class ip QOS-q-af2-business
+    70 class ip QOS-q-sdwan-control-traffic action dscp AF21
+    80 class ip QOS-q-af1-bulkUDP action dscp AF11
+    90 class ip QOS-q-af1-bulkTCP action dscp AF11
+    100 class ip QOS-q-af1-background
+    110 class ip QOS-q-af23-thdunknown
+    120 class ip default
+policy QOS-P-vsat
+    10 class ip QOS-q-cs6-routing action dscp CS6
+    20 class ip QOS-q-ef-voice
+    30 class ip QOS-q-af3-critical
+    40 class ip QOS-q-af33-critlo action dscp AF33
+    50 class ip QOS-q-af2-business
+    60 class ip QOS-q-af1-bulkUDP action dscp AF11
+    70 class ip QOS-q-af1-bulkTCP action dscp AF11
+    80 class ip QOS-q-af1-background
+    90 class ip QOS-q-af23-thdunknown
+    100 class ip default
+policy aruba_sdwan_mis_parent_7meg_rev5
+    10 class ip QOS-q-cs0-sdwan-inet-traffic action dscp CS0
+qos schedule-profile QOS-P-vsat-scheduler
+    dwrr queue 0 weight 5
+    dwrr queue 1 weight 9
+    dwrr queue 2 weight 44
+    dwrr queue 3 weight 37
+    dwrr queue 4 weight 1
+    dwrr queue 5 weight 1
+    dwrr queue 6 weight 3
+    strict queue 7 max-bandwidth 115 kbps
+!
+vlan 1
+vlan 2
+    name STORE-NETWORK-VLAN
+    arp inspection
+    ip igmp snooping enable
+vlan 12
+    name ORANGE12-WIRELESS-VLAN
+    ip igmp snooping enable
+vlan 30
+    name POS-VLAN
+    arp inspection
+vlan 80
+    name VSAT
+vlan 555
+    name VOICE-VLAN
+    voice
+    arp inspection
+vlan 802
+    name THD-MGMT-VLAN
+vlan 998
+    name LTE_Transport
+vlan 999
+    description **BGP Transport**
+interface lag 35
+    no shutdown
+    no routing
+    arp inspection trust
+    vlan trunk native 1
+    vlan trunk allowed 1-2,12,30,555,802
+    lacp mode active
+    lacp rate fast
+interface lag 36
+    no shutdown
+    no routing
+    arp inspection trust
+    vlan trunk native 1
+    vlan trunk allowed 1-2,12,30,555,802
+    lacp mode active
+    lacp rate fast
+interface lag 37
+    no shutdown
+    no routing
+    arp inspection trust
+    vlan trunk native 1
+    vlan trunk allowed 1-2,12,30,555,802
+    lacp mode active
+    lacp rate fast
+interface lag 38
+    no shutdown
+    no routing
+    arp inspection trust
+    vlan trunk native 1
+    vlan trunk allowed 1-2,12,30,555,802
+    lacp mode active
+    lacp rate fast
+
+interface 1/1/1
+    no shutdown
+    apply qos schedule-profile QOS-P-vsat-scheduler
+    qos shape 1500 kbps
+    description VSAT
+    arp inspection trust
+    no routing
+    loop-protect
+    vlan trunk allowed 80
+interface 1/1/2
+    no shutdown
+    description LTE Router
+    no routing
+    loop-protect
+    vlan trunk native 999
+    vlan trunk allowed 2,802,999
+interface 1/1/3
+    no shutdown
+    description Console_Server
+    arp inspection trust
+    no routing
+    loop-protect
+    vlan access 2
+interface 1/1/4-1/1/12
+    no shutdown
+    description AP_Uplink
+    no routing
+    loop-protect
+    loop-protect vlan 2,12,30,555,802
+    arp inspection trust
+    vlan trunk native 802
+    vlan trunk allowed 2,12,30,555,802
+interface 1/1/13-1/1/24
+    no shutdown
+    description POS
+    arp inspection trust
+    no routing
+    loop-protect
+    vlan access 30
+interface 1/1/25-1/1/32
+    no shutdown
+    description STORE_NW
+    arp inspection trust
+    no routing
+    loop-protect
+    vlan access 2
+interface 1/1/33
+    no shutdown
+    description PHONE
+    arp inspection trust
+    no routing
+    loop-protect
+    vlan access 555
+interface 1/1/34
+    no shutdown
+    description PHONE
+    arp inspection trust
+    no routing
+    loop-protect
+    vlan access 555
+interface 1/1/35
+    no shutdown
+    lag 35
+interface 1/1/36
+    no shutdown
+    lag 36
+interface 1/1/37
+    no shutdown
+    lag 37
+interface 1/1/38
+    no shutdown
+    lag 38
+interface 1/1/39-1/1/47
+    shutdown
+interface 1/1/48
+    description LTE-ROUTER-BACKUP-Port
+    no shutdown
+    no routing
+    vlan access 999
+interface 1/1/49
+    no shutdown
+interface 1/1/50
+    no shutdown
+interface 1/1/51
+    no shutdown
+interface 1/1/52
+    no shutdown
+interface vlan 1
+    no ip dhcp
+interface vlan 2
+    no shutdown
+    description ** Store LAN **
+    ip address %vlan_2_ip%%vlan_2_mask%
+    apply policy QOS-P-marker routed-in
+    ip igmp enable
+    ip pim-sparse enable
+interface vlan 12
+    no shutdown
+    description ** WLAN - Orange12 & Concrete **
+    ip address %vlan_12_ip%%vlan_12_mask%
+    apply access-list ip FW-WIRELESS-VLAN-IN-2010JULY10-CSR routed-in
+    apply access-list ip FW-WIRELESS-VLAN-OUT_17-7-CSR routed-out
+    apply policy QOS-P-marker routed-in
+    ip igmp enable
+    ip pim-sparse enable
+interface vlan 30
+    no shutdown
+    description ** PoS Segmentation **
+    ip address %vlan_30_ip%%vlan_30_mask%
+    apply access-list ip FW-VLAN30-IN-CSR routed-in
+    apply access-list ip FW-VLAN30-OUT_17-7-CSR routed-out
+    apply policy QOS-P-marker routed-in
+interface vlan 80
+    no shutdown
+    description ** VSAT **
+    ip address %vlan_80_ip%%vlan_80_mask%
+    apply access-list ip VSAT-OUT-01-14-14 routed-out
+    ip pim-sparse enable
+interface vlan 998
+    shutdown
+    description ** LTE_Transport **
+    apply access-list ip VSAT-OUT-01-14-14 routed-out
+interface vlan 999
+    no shutdown
+    description **BGP Transport**
+    ip address %vlan_999_ip%%vlan_999_mask%
+interface vlan 555
+    no shutdown
+    description ** Voice VLAN **
+    ip address %vlan_555_ip%%vlan_555_mask%
+    apply policy QOS-P-marker routed-in
+interface vlan 802
+    description ** THD MGMT VLAN 802 **
+    ip address %vlan_802_ip%%vlan_802_mask%
+    apply policy QOS-P-marker routed-in
+!
+snmp-server vrf default
+snmp-server community %snmp_community_1%
+    access-list ipv4 SNMP_ACL
+snmp-server community %snmp_community_2%
+    access-list ipv4 SNMP_ACL
+snmp-server community %snmp_community_3%
+    access-list ipv4 SNMP_ACL
+snmp-server community %snmp_community_4%
+    access-list ipv4 SNMP_ACL
+snmp-server community %snmp_community_5%
+    access-list ipv4 SNMP_ACL
+snmpv3 user thd-sine auth sha auth-pass ciphertext AQBapTsSi+0YFenuHLX1GXO2WlT+I2qUKcfj/oPDOZvZvnSCCAAAAGPB/lNlnnb4 priv aes priv-pass ciphertext AQBapTsSi+0YFenuHLX1GXO2WlT+I2qUKcfj/oPDOZvZvnSCCAAAAGPB/lNlnnb4
+snmp-server host %snmp_trap_dest_1% trap version v2c community %snmp_trap_comm_1%
+snmp-server host %snmp_trap_dest_2% trap version v2c community %snmp_trap_comm_2%
+snmp-server host %snmp_trap_dest_3% trap version v2c community %snmp_trap_comm_3%
+
+ip route 0.0.0.0 0.0.0.0 %route_next_hop_vsat% distance 210
+ip route 0.0.0.0 0.0.0.0 %route_next_hop_lte% distance 210
+
+!
+ip dns domain-name swm1.%_site_type%%_site_number%.homedepot.com
+ip dns server-address %dns_server_primary%
+ip dns server-address %dns_server_secondary%
+ip dns server-address 8.8.8.8 vrf mgmt
+ip dns server-address 8.8.4.4 vrf mgmt
+!
+!
+ip prefix-list RED seq 10 permit %bgp_agg_addr% le 32
+!
+!
+route-map RED permit seq 10
+     match ip address prefix-list RED
+route-map RED deny seq 20
+!
+route-map VSAT-EBGP-OUT permit seq 10
+     set as-path prepend 59902 59902 59902 59902 59902 59902 59902 59902 59902 59902
+route-map VSAT-EBGP-OUT permit seq 20
+     set as-path prepend 59902 59902 59902 59902 59902 59902 59902 59902 59902 59902
+route-map VSAT-EBGP-OUT-SUP deny seq 10
+route-map VSAT-EBGP-OUT-SUP permit seq 20
+     set as-path prepend 59902 59902 59902 59902 59902 59902 59902 59902 59902 59902
+route-map VSAT-EBGP-OUT-SUP permit seq 30
+     set as-path prepend 59902 59902 59902 59902 59902 59902 59902 59902 59902 59902
+route-map VSAT-ORF permit seq 10
+route-map VSAT-prepend-10 permit seq 10
+     set as-path prepend 59902 59902 59902 59902 59902 59902 59902 59902 59902 59902
+route-map VSAT-prepend-9 permit seq 10
+     set as-path prepend 59902 59902 59902 59902 59902 59902 59902 59902 59902
+!
+router graceful-restart disable
+!
+router bgp %bgp_asn%
+    neighbor %bgp_inside_lte% remote-as %bgp_asn%
+    neighbor %bgp_inside_lte% description Starlink-819
+    neighbor %bgp_inside_lte% timers connect-retry 5
+    neighbor %bgp_vsat_peer_1% remote-as %bgp_vsat_asn%
+    neighbor %bgp_vsat_peer_1% description VSAT Peer
+    neighbor %bgp_vsat_peer_1% timers 30 90
+    neighbor %bgp_vsat_peer_1% timers connect-retry 5
+    neighbor %bgp_vsat_peer_1% ebgp-multihop 10
+    neighbor %bgp_vsat_peer_2% remote-as %bgp_vsat_asn%
+    neighbor %bgp_vsat_peer_2% description VSAT Peer
+    neighbor %bgp_vsat_peer_2% timers 30 90
+    neighbor %bgp_vsat_peer_2% timers connect-retry 5
+    neighbor %bgp_vsat_peer_2% ebgp-multihop 10
+    address-family ipv4 unicast
+        neighbor %bgp_inside_lte% activate
+        neighbor %bgp_inside_lte% next-hop-self
+        neighbor %bgp_inside_lte% send-community standard
+        neighbor %bgp_inside_lte% soft-reconfiguration inbound
+        neighbor %bgp_vsat_peer_1% activate
+        neighbor %bgp_vsat_peer_1% next-hop-self                    
+        neighbor %bgp_vsat_peer_1% route-map VSAT-ORF in
+        neighbor %bgp_vsat_peer_1% route-map VSAT-EBGP-OUT-SUP out
+        neighbor %bgp_vsat_peer_1% capability orf prefix-list send 
+        neighbor %bgp_vsat_peer_1% soft-reconfiguration inbound
+        neighbor %bgp_vsat_peer_2% activate
+        neighbor %bgp_vsat_peer_2% next-hop-self
+        neighbor %bgp_vsat_peer_2% route-map VSAT-ORF in
+        neighbor %bgp_vsat_peer_2% route-map VSAT-EBGP-OUT-SUP out
+        neighbor %bgp_vsat_peer_2% capability orf prefix-list send 
+        neighbor %bgp_vsat_peer_2% soft-reconfiguration inbound
+        redistribute connected route-map RED
+        network 10.124.219.140/30
+        network 10.125.219.142/32
+        network 10.126.219.142/32
+        aggregate-address %bgp_agg_addr% as-set
+    exit-address-family
+!
+!
+!
+! Do not set IP Source VLAN if is_staging=Y
+%if is_staging=Y%
+%else%
+    ip source-interface all interface vlan802
+%endif%
+https-server vrf default
+https-server vrf mgmt
+
+!!-----> DHCP POOLS:
+dhcp-server vrf default
+    pool VLAN2
+        range %vlan_2_pool%
+        default-router %vlan_2_ip%
+        dns-server %dns_server_primary%
+%if dhcp_domain_name%
+		domain-name %dhcp_domain_name%
+%endif%
+%if dhcp_vlan2_option%
+        option %dhcp_vlan2_option%
+%endif%
+        lease 01:00:00
+        exit
+    pool VLAN12
+        range %vlan_12_pool%
+        default-router %vlan_12_ip%
+        dns-server %dns_server_primary%
+%if dhcp_domain_name%
+		domain-name %dhcp_domain_name%
+%endif%
+%if dhcp_vlan12_option%
+        option %dhcp_vlan12_option%
+%endif%
+        lease 01:00:00
+        exit
+    pool VLAN30
+        range %vlan_30_pool%
+        default-router %vlan_30_ip%
+        dns-server %dns_server_primary%
+%if dhcp_domain_name%
+		domain-name %dhcp_domain_name%
+%endif%
+%if dhcp_vlan30_option%
+        option %dhcp_vlan30_option%
+%endif%
+        lease 01:00:00
+        exit
+    pool VLAN555
+        range %vlan_555_pool%
+        dns-server %dns_server_primary%
+%if dhcp_domain_name%
+		domain-name %dhcp_domain_name%
+%endif%
+%if dhcp_vlan555_option%
+        option %dhcp_vlan555_option%
+%endif%
+        default-router %vlan_555_ip%
+        lease 01:00:00
+        exit
+    pool VLAN802
+        range %vlan_802_pool%
+        dns-server %dns_server_primary%
+%if dhcp_domain_name%
+		domain-name %dhcp_domain_name%
+%endif%
+%if dhcp_vlan802_option%
+        option %dhcp_vlan802_option%
+%endif%
+        default-router %vlan_802_ip%
+        lease 01:00:00
+        exit
+    enable
+!
+! TEMPLATE NAME: FW VERSION 13 6300_dr_midf -- VERSION: 9 -- PILOT_BRANCH
+!

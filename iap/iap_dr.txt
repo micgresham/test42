@@ -1,0 +1,270 @@
+#define HAS_MULTILINE_VARIABLE 1
+#define NLB_IP_AS_ROUTE 1
+!
+! TEMPLATE NAME: iap_dr -- VERSION: 4 -- PILOT_BRANCH
+
+
+!---------VC Settings-----------
+virtual-controller-country %country_code%
+name %vc_name%
+virtual-controller-ip %static_vc_ip%
+terminal-access
+loginsession timeout 60
+
+banner motd ********************************************************************************
+banner motd "                                  WARNING:"
+banner motd "           THIS SYSTEM IS PRIVATE PROPERTY FOR THE USE OF THE COMPANY"
+banner motd "                       **** AUTHORIZED USERS ONLY! ****"
+banner motd "Any use of this computer network system shall be deemed to be express consent"
+banner motd "to monitoring of such use and to such additional monitoring as may be necessary"
+banner motd "to identify any unauthorized user. The system administrator or other"
+banner motd "representatives of the system owner may monitor system use at any time without"
+banner motd "further notice or consent. Unauthorized use of this  system and any other"
+banner motd "criminal conduct revealed by such use is subject to disclosure to law"
+banner motd "enforcement officials and prosecution to the full extent of  the law."
+banner motd "Unauthorized access is a violation of state and federal, civil and criminal"
+banner motd laws.
+banner motd ********************************************************************************
+
+clock timezone UTC 0 0
+rf-band all
+report-rssi-to-central unassociated-and-associated-clients
+report-rssi-to-central-level 0
+
+%allow_aps%
+
+radsec-ca-checksum cg_radsec
+cp-cert-checksum aruba_default
+
+dpi
+url-visibility
+ 
+!------RF--------------
+arm
+ wide-bands none
+ a-channels 36,40,44,48,52,56,60,64,153,157,161
+ g-channels 1,6,11
+ min-tx-power 6
+ max-tx-power 21
+ band-steering-mode disable
+ air-time-fairness-mode fair-access
+ client-aware
+ scanning
+ client-match
+ client-match calc-threshold 100
+ client-match calc-interval 10
+ client-match slb-mode 2
+ client-match bad-snr 12
+ client-match snr-thresh 15
+ client-match client-thresh 255
+ client-match restriction-timeout 3
+
+rf dot11g-radio-profile
+ csd-override
+ dot11h
+ max-tx-power 9
+ min-tx-power 6
+
+rf dot11a-radio-profile
+ dot11h
+ max-tx-power 21
+ min-tx-power 18
+
+syslog-level warn ap-debug
+syslog-level warn network
+syslog-level warn security
+syslog-level warn system
+syslog-level warn user
+syslog-level warn user-debug
+syslog-level warn wireless
+
+!-----RADIUS
+dynamic-radius-proxy
+
+!-----MGMT LOGIN
+mgmt-auth-server thd-naas
+mgmt-auth-server-local-backup
+hash-mgmt-password
+hash-mgmt-user admin password hash %admin_pw%
+
+!------Corporate ROLES---------
+
+wlan access-rule steel
+ redirect-blocked-https-traffic
+ rule any any match udp 67 68 permit
+ rule any any match udp 8209 8209 deny
+ rule any any match udp 8211 8211 deny
+ rule any any match tcp 80 80 permit
+ rule any any match tcp 443 443 permit
+ rule any any match tcp 2000 2000 permit tos 46 dot1p-priority 6
+ rule any any match udp 5000 5031 permit disable-scanning tos 46 dot1p-priority 6
+ rule any any match any any any permit tos 46 dot1p-priority 6
+
+wlan access-rule default_wired_port_profile
+ rule any any match any any any permit
+
+wlan access-rule wired-SetMeUp
+ rule masterip 0.0.0.0 match tcp 80 80 permit
+ rule masterip 0.0.0.0 match tcp 4343 4343 permit
+ rule any any match udp 67 68 permit
+ rule any any match udp 53 53 permit
+
+wlan access-rule trunk
+ rule any any match any any any permit
+
+hotspot anqp-ip-addr-avail-profile V4-NAT
+ enable
+ ipv4-addr-avail single-nated-private
+ no ipv6-addr-avail
+
+hotspot anqp-domain-name-profile THD-DOMAIN
+ enable
+ domain-name www.homedepot.com
+ 
+hotspot h2qp-oper-name-profile THD-OPER
+ enable
+ op-lang-code eng
+ op-fr-name "The Home Depot" 
+
+!--------Corporate WLANs-------------
+
+wlan ssid-profile steel
+ enable
+ type voice
+ essid steel
+ wpa-passphrase e91b0dff2cbdd0b18f990a51ebd5a311e75281d09e9dff10f417c668afb7e63e4e09035ef11b12ebe6e80ef7a5b84d810bd0a23d2f208f830844c9f1c4182569a180aa45ff535e4f
+ opmode wpa2-psk-aes
+ max-authentication-failures 0
+ vlan 12
+ auth-server InternalServer
+ rf-band 5.0
+ captive-portal disable
+ dtim-period 2
+ broadcast-filter arp
+ g-min-tx-rate 12
+ a-min-tx-rate 12
+ multicast-rate-optimization
+ dynamic-multicast-optimization
+ dmo-channel-utilization-threshold 90
+ local-probe-req-thresh 0
+ max-clients-threshold 128
+ wmm-voice-dscp "46"
+ wmm-uapsd-disable
+ dot11r
+ dot11k
+
+auth-survivability cache-time-out 24
+
+wlan external-captive-portal
+ server localhost
+ port 443
+ url "/"
+ auth-text "Authenticated"
+ server-fail-through
+ auto-whitelist-disable
+ https
+ 
+!-----HPE GMS RADSEC SERVER
+wlan auth-server thd-naas
+ radsec
+ radsec-keepalive status-server
+ ip 128.136.57.120
+ nas-ip %static_vc_ip%
+ port 1812
+ acctport 1813
+ timeout 20
+ rfc3576
+
+blacklist-time 3600
+auth-failure-blacklist-time 3600
+
+ids
+ wireless-containment none
+
+wired-port-profile wired-SetMeUp
+ switchport-mode access
+ allowed-vlan all
+ native-vlan guest
+ no shutdown
+ access-rule-name wired-SetMeUp
+ speed auto
+ duplex auto
+ no poe
+ type guest
+ captive-portal disable
+ no dot1x
+
+wired-port-profile default_wired_port_profile
+ switchport-mode trunk
+ allowed-vlan all
+ native-vlan 1
+ shutdown
+ access-rule-name default_wired_port_profile
+ speed auto
+ duplex full
+ no poe
+ type employee
+ captive-portal disable
+ no dot1x
+
+wired-port-profile trunk
+ switchport-mode trunk
+ allowed-vlan all
+ native-vlan 1
+ no shutdown
+ access-rule-name trunk
+ speed auto
+ duplex auto
+ no poe
+ type employee
+ captive-portal disable
+ no dot1x
+
+enet0-port-profile trunk
+
+uplink
+ preemption
+ enforce none
+ failover-internet-pkt-lost-cnt 10
+ failover-internet-pkt-send-freq 30
+ failover-vpn-timeout 180
+
+airgroup
+ disable
+
+airgroupservice airplay
+ disable
+ description AirPlay
+
+airgroupservice airprint
+ disable
+ description AirPrint
+
+clarity
+ inline-sta-stats
+ inline-auth-stats
+ inline-dhcp-stats
+ inline-dns-stats
+
+per-ap-settings %_sys_lan_mac%
+    hostname %h_name%
+    %if iap_master=1%
+     iap-master
+    %endif%
+    %if mesh_disabled=1%
+      mesh-disable
+    %else%
+      mesh-cluster-name arubamesh
+      mesh-cluster-key gdCDUZqBW2DWxJkn
+    %endif%
+    %if iap_enet0_bridging=1%
+     enet0-bridging
+    %endif%
+    %if custom_wlan_zone%
+     zonename %custom_wlan_zone%
+    %endif%
+    %if custom_rf_zone%
+     rf-zone %custom_rf_zone%
+    %endif%
+!
+! TEMPLATE NAME: iap_dr -- VERSION: 4 -- PILOT_BRANCH

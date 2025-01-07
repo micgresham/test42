@@ -1,0 +1,686 @@
+!
+! TEMPLATE NAME: 6100_us_wanidf -- VERSION: 21 -- PILOT_BRANCH
+!
+%if _site_type=WAN%
+    hostname ST%_site_number%-%_site_type%
+%else%
+    hostname %_site_type%%_site_number%-IDF-%_sys_id%
+%endif%
+configuration-lockout central managed
+
+user admin group administrators password ciphertext %adminpw%
+user operator group operators password ciphertext %operpw%
+user thd-operator group operators password ciphertext %thdoperpw%
+user htsse group administrators password ciphertext AQBapfVQ+q3FO8cKuJ3kZYUt1Iq4f2RgbcHxUcSqUt6i+espYgAAAMkaDg3lq0utG9ucAAimcmUEecpiMFD6XADO/DiBZRMOtWmvGsIi5EHhrsK43/Kr4vdzfG1EpqUT2Cl66tlDefounAzQBub7C415c2tDcYM462cH87Uj4kgdAfsDlsUWrJk7
+
+!-----THD Helpdesk Local Account-------
+user-group thd-service
+permit cli command "aruba-central support-mode"
+permit cli command "configure terminal"
+permit cli command "no configuration-lockout central"
+permit cli command "interface .*"
+permit cli command "no power-over-ethernet"
+permit cli command "power-over-ethernet"
+permit cli command "shutdown"
+permit cli command "no shutdown"
+permit cli command "diagnostics"
+permit cli command "diag cable-diagnostic .*"
+permit cli command "show interface .*"
+permit cli command "auto-confirm"
+permit cli command "no auto-confirm"
+!
+!--------THD helpdesk Local UserAccount and Server hostKey-----------
+user thd-service group thd-service
+ssh public-key-authentication
+user thd-service authorized-key ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCwbxjse7NDW9FuV3MIwbeqGvoZsUzWpctVfmoxsDUFSoryNIucf4gHdXalKX/HsiKtz6gIekGU9TXsAlanYNBZ+W+ltF3e8kLGFsrtekGOSWKcQ+ajH6DwSTIv22CwQHWx7his2v3cmaEGijsLPXoPDlyx8yP5llJBdQ1RcKLpsuUDZ18WSYYtypR0qWsGYijgtoI/6P3LEJtraqE3GML6aizBZh/kxALWNr9Ie+klQiTj7GKYm82hG4OE42AUo7ey/DB7fH3JeJztM6/RRN7WH4elOf3H1QhN9P81gDXFwslXr4bEglFJr9i28yKt+YzLqtqw2M3pT0J/SO9lWOyN itsd_tools@lpc18526
+!
+!
+!
+clock timezone %timezone%
+%if is_badusb=Y%
+no usb
+%endif%
+ntp server %ntp_server_1% iburst
+ntp enable
+cli-session
+    timeout 5
+!
+!
+!
+port-access role 802.1x_deny_role
+    vlan access 2
+port-access role local_preauth_role
+    vlan access 10
+port-access role local-unauthenticated-role
+    vlan access 2
+!-----Authentication Server-------
+radius-server timeout 10
+radius-server retries 2
+radius-server tracking interval 60
+aaa radius-attribute group radius
+!
+!-------NaaS Mgmt Radsec Servers--------
+radius-server service-type in-access-request
+! 1010fwradius-server host %radsec_server_1% tls tracking enable
+!
+!-------NaaS Mgmt Server Group--------
+aaa group server radius thd-naas
+! 1010fw    server %radsec_server_1% tls
+! 1010fwcrypto pki application radsec-client certificate device-identity
+! 1010fwcrypto pki ta-profile CPPM-ROOT-CA-THD
+! 1010fw    ta-certificate
+! 1010fw        -----BEGIN CERTIFICATE-----
+! 1010fw        MIIDdzCCAl+gAwIBAgIQN6JSkcG1xpBNhRq7+j3mJjANBgkqhkiG9w0BAQsFADBC
+! 1010fw        MRMwEQYKCZImiZPyLGQBGRYDb3JnMRMwEQYKCZImiZPyLGQBGRYDYW1zMRYwFAYD
+! 1010fw        VQQDEw1hbXMtQUxGREMyLUNBMB4XDTIxMDcyMDE2NDcxM1oXDTI3MDcyMDE2NTcx
+! 1010fw        MVowQjETMBEGCgmSJomT8ixkARkWA29yZzETMBEGCgmSJomT8ixkARkWA2FtczEW
+! 1010fw        MBQGA1UEAxMNYW1zLUFMRkRDMi1DQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
+! 1010fw        AQoCggEBAMs7PFx8Jzi2pdgVyfw6K8lYnj9E93pFh3Sldka34XCp0lJAsYLvAcoI
+! 1010fw        JOldqJbFYGM/yeAcYl8S20DqmerIo8ZwWojq2R/j6T7GdkiGr1CWEVDWZr3ue1qv
+! 1010fw        D0POYsCr7vjn/evfcHs4nEhyQcwbk5xCz2R7gm7T8pBDGMr5FUf8lBiWN5ZuoZJA
+! 1010fw        yK7/XHuKz1kX+CxY4E0IJqM4YjHW2J0eleJpF6ErLkxBhiw5px4RGsM6cL7dM0Re
+! 1010fw        ak5DkUjwPPKJQqlwlGfNfrcmGShT074m7i3MaEaO3br7oZ3PfkTDqw0ZJAMJ6sIT
+! 1010fw        aPTj/NVyttSUtRIMfaMUZITktcLsZWsCAwEAAaNpMGcwEwYJKwYBBAGCNxQCBAYe
+! 1010fw        BABDAEEwDgYDVR0PAQH/BAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYE
+! 1010fw        FGNVAK4pBqfuWIZ959Qwi44MS9FXMBAGCSsGAQQBgjcVAQQDAgEAMA0GCSqGSIb3
+! 1010fw        DQEBCwUAA4IBAQApLtzKDms7AKwkWzCBtktmZsdv11ZqjL3TMvz+mXopxpMQG9Ac
+! 1010fw        XBcN2FHM4JjQGXg/Iav9qkY1Cy2YBCSusxsiIE6oGJrlnDo1t9V2bSYsY32WZ2cK
+! 1010fw        k/gMoOiinKLR8qXGN797qBSZrK0H7jdfDeOPTmDEWDZZWkFN97dXLo1wT9NjawVW
+! 1010fw        dpK58GDFmzKSpIetLdB49wWOu94ASzudqz6okFptaREpQ5CVhslnQmv7AtZn9uuh
+! 1010fw        oPYsR9BY2Mxi6oJ7zzLw1emiDliNjjAK4iUUhKjeN4p3oB2KlospazGioG1+Gm7p
+! 1010fw        hAHdljkCYAiEnyJux6B6mQS8OLfJv6IcQnA5
+! 1010fw        -----END CERTIFICATE-----
+! 1010fw        END_OF_CERTIFICATE
+aaa radius-attribute group thd-naas
+    tunnel-private-group-id value static
+    tunnel-private-group-id request-type both
+    nas-ip-addr request-type both
+    nas-ip-addr service-type user-management
+!
+!-------ISE Servers--------
+radius-server host %ise_server_1% key plaintext %ise_plaintext_key% tracking enable tracking-mode dead-only
+radius-server host %ise_server_2% key plaintext %ise_plaintext_key% tracking enable tracking-mode dead-only
+!
+!------ISE Server Group-------
+aaa group server radius ISE
+    server %ise_server_1%
+    server %ise_server_2%
+!
+aaa authentication allow-fail-through
+aaa authentication login console group local thd-naas
+aaa authentication login https-server group local thd-naas
+aaa authentication login ssh group local thd-naas
+aaa accounting all-mgmt ssh start-stop group thd-naas
+aaa accounting port-access start-stop group ISE
+!
+aaa authentication port-access dot1x authenticator
+    radius server-group ISE
+    enable
+aaa authentication port-access mac-auth
+    addr-format multi-dash-uppercase
+    radius server-group ISE
+    auth-method pap
+    enable
+radius dyn-authorization client %ise_server_1% secret-key plaintext %ise_plaintext_key% replay-protection disable
+radius dyn-authorization client %ise_server_2% secret-key plaintext %ise_plaintext_key% replay-protection disable
+radius dyn-authorization port 1700
+radius dyn-authorization enable
+!
+client track ip
+!
+!-----ACL Configuration-----
+access-list ip CONTROLPLANE
+    5 comment --- SSH Traffic ---
+    10 permit tcp 192.168.112.1 any eq 22
+    20 permit tcp 207.11.32.71 any eq 22
+    30 permit tcp 207.11.32.85 any eq 22
+    40 permit tcp 207.11.118.1 any eq 22
+    50 permit tcp 207.11.32.94 any eq 22
+    60 permit tcp 207.11.32.88 any eq 22
+    70 permit tcp 207.11.32.91 any eq 22
+    80 permit tcp 207.11.37.1 any eq 22
+    90 permit tcp 192.168.128.1 any eq 22
+    100 permit tcp 172.29.191.0/255.255.255.192 any eq 22
+    110 permit tcp 172.29.197.0/255.255.255.192 any eq 22
+    120 permit tcp 10.128.0.45/255.128.7.255 any eq 22
+    130 permit tcp 10.128.0.73/255.128.7.255 any eq 22
+    140 permit tcp 10.64.0.0/255.248.0.0 any eq 22             
+    150 permit tcp 10.72.0.0/255.248.0.0 any eq 22
+    160 permit tcp 10.69.99.0/255.255.255.0 any eq 22
+    170 permit tcp 10.77.99.0/255.255.255.0 any eq 22
+    180 permit tcp 151.140.0.0/255.255.0.0 any eq 22
+    190 permit tcp 165.130.0.0/255.255.0.0 any eq 22
+%if is_npcpacl=Y%
+    195 permit tcp 10.16.42.165 any eq 22
+%endif% 	
+    200 permit tcp 172.18.0.0/255.255.0.0 any eq 22
+    210 permit tcp 172.19.174.0/255.255.255.0 any eq 22
+    220 permit tcp 172.19.175.64/255.255.255.192 any eq 22
+    230 permit tcp 172.19.190.0/255.255.255.0 any eq 22
+    240 permit tcp 172.19.191.64/255.255.255.192 any eq 22
+    250 permit tcp 172.19.206.0/255.255.255.0 any eq 22
+    260 permit tcp 172.19.207.64/255.255.255.192 any eq 22
+    270 permit tcp 172.19.222.0/255.255.255.0 any eq 22
+    280 permit tcp 172.19.223.64/255.255.255.192 any eq 22
+    290 permit tcp 172.19.8.0/255.255.254.0 any eq 22
+    300 permit tcp 172.21.128.0/255.255.192.0 any eq 22
+    310 permit tcp 172.21.192.0/255.255.192.0 any eq 22
+    320 permit tcp 172.26.6.0/255.255.255.0 any eq 22
+    330 permit tcp 172.26.63.0/255.255.255.0 any eq 22
+    340 permit tcp 192.168.50.0/255.255.255.248 any eq 22
+    350 permit tcp 192.168.80.0/255.255.252.0 any eq 22
+    360 permit tcp 207.11.12.0/255.255.255.0 any eq 22
+    370 permit tcp 207.11.21.0/255.255.255.0 any eq 22         
+    380 permit tcp 207.11.20.64/255.255.255.192 any eq 22
+    390 permit tcp 207.11.33.64/255.255.255.192 any eq 22
+    395 comment --GlobalProtectVPN-SSH----
+    400 permit tcp 10.97.0.0/255.255.0.0 any eq 22
+    410 permit tcp 10.98.0.0/255.255.0.0 any eq 22
+    420 permit tcp 10.99.0.0/255.255.0.0 any eq 22
+    430 permit tcp 10.100.0.0/255.255.0.0 any eq 22
+    440 permit tcp 10.101.0.0/255.255.0.0 any eq 22
+    450 permit tcp 10.102.0.0/255.255.0.0 any eq 22
+    460 deny tcp any any eq 22 count
+    505 comment --- HTTPS Traffic ---
+    510 permit tcp 192.168.112.1 any eq 443
+    520 permit tcp 207.11.32.71 any eq 443
+    530 permit tcp 207.11.32.85 any eq 443
+    540 permit tcp 207.11.118.1 any eq 443
+    550 permit tcp 207.11.32.94 any eq 443
+    560 permit tcp 207.11.32.88 any eq 443
+    570 permit tcp 207.11.32.91 any eq 443
+    580 permit tcp 207.11.37.1 any eq 443
+    590 permit tcp 192.168.128.1 any eq 443
+    600 permit tcp 172.29.191.0/255.255.255.192 any eq 443
+    610 permit tcp 172.29.197.0/255.255.255.192 any eq 443
+    620 permit tcp 10.128.0.45/255.128.7.255 any eq 443
+    630 permit tcp 10.128.0.73/255.128.7.255 any eq 443
+    640 permit tcp 10.64.0.0/255.248.0.0 any eq 443             
+    650 permit tcp 10.72.0.0/255.248.0.0 any eq 443
+    660 permit tcp 10.69.99.0/255.255.255.0 any eq 443
+    670 permit tcp 10.77.99.0/255.255.255.0 any eq 443
+    680 permit tcp 151.140.0.0/255.255.0.0 any eq 443
+    690 permit tcp 165.130.0.0/255.255.0.0 any eq 443
+    700 permit tcp 172.18.0.0/255.255.0.0 any eq 443
+    710 permit tcp 172.19.174.0/255.255.255.0 any eq 443
+    720 permit tcp 172.19.175.64/255.255.255.192 any eq 443
+    730 permit tcp 172.19.190.0/255.255.255.0 any eq 443
+    740 permit tcp 172.19.191.64/255.255.255.192 any eq 443
+    750 permit tcp 172.19.206.0/255.255.255.0 any eq 443
+    760 permit tcp 172.19.207.64/255.255.255.192 any eq 443
+    770 permit tcp 172.19.222.0/255.255.255.0 any eq 443
+    780 permit tcp 172.19.223.64/255.255.255.192 any eq 443
+    790 permit tcp 172.19.8.0/255.255.254.0 any eq 443
+    800 permit tcp 172.21.128.0/255.255.192.0 any eq 443
+    810 permit tcp 172.21.192.0/255.255.192.0 any eq 443
+    820 permit tcp 172.26.6.0/255.255.255.0 any eq 443
+    830 permit tcp 172.26.63.0/255.255.255.0 any eq 443
+    840 permit tcp 172.29.164.134/255.255.255.255 any eq 443 
+    850 permit tcp 172.29.165.130/255.255.255.255 any eq 443 
+    860 permit tcp 172.29.166.134/255.255.255.255 any eq 443 
+    870 permit tcp 172.29.167.13/255.255.255.255 any eq 443 
+    880 permit tcp 192.168.50.0/255.255.255.248 any eq 443
+    890 permit tcp 192.168.80.0/255.255.252.0 any eq 443
+    900 permit tcp 207.11.12.0/255.255.255.0 any eq 443
+    910 permit tcp 207.11.21.0/255.255.255.0 any eq 443         
+    920 permit tcp 207.11.20.64/255.255.255.192 any eq 443
+    930 permit tcp 207.11.33.64/255.255.255.192 any eq 443
+    %if is_npcpacl=Y%
+    932 permit tcp 10.16.41.233 any eq 443
+    %endif% 
+    945 comment --GlobalProtectVPN-HTTPS----
+    950 permit tcp 10.97.0.0/255.255.0.0 any eq 443
+    960 permit tcp 10.98.0.0/255.255.0.0 any eq 443
+    970 permit tcp 10.99.0.0/255.255.0.0 any eq 443
+    980 permit tcp 10.100.0.0/255.255.0.0 any eq 443
+    990 permit tcp 10.101.0.0/255.255.0.0 any eq 443
+    1000 permit tcp 10.102.0.0/255.255.0.0 any eq 443
+    1010 deny tcp 10.0.0.0/8 any eq 443
+    1020 deny tcp 172.16.0.0/12 any eq 443 
+    1030 deny tcp 192.168.0.0/16 any eq 443
+    5000 permit any any any count	
+access-list ip leximark
+    10 permit udp any any eq 67 count
+    20 permit udp any any eq 53 count
+    30 permit any any 10.64.168.52 count
+    40 permit any any 10.64.169.199 count
+    50 permit any any 10.64.171.70 count
+    60 permit any any 10.64.170.126 count
+    70 permit any any 10.128.0.0/255.128.0.0 count
+    80 permit any any 40.92.0.0/255.254.0.0 count
+    90 permit any any 40.107.0.0/255.255.0.0 count
+    100 permit any any 52.100.0.0/255.252.0.0 count
+    110 permit any any 104.47.0.0/255.255.128.0 count
+    120 permit any any 151.140.2.118 count
+    130 permit any any 151.140.105.171 count
+    140 permit any any 151.140.101.98 count
+    150 permit any any 151.140.101.99 count
+    160 permit any any 172.26.118.112 count
+    170 permit any any 172.26.118.113 count
+    180 permit any any 10.64.169.151 count
+    190 permit any any 10.64.171.234 count
+    200 permit any any 10.64.169.145 count
+    210 permit any any 10.64.169.231 count
+    220 deny any any 10.0.0.0/255.0.0.0 count
+    230 deny any any 172.16.0.0/255.240.0.0 count
+    240 deny any any 192.168.0.0/255.255.0.0 count
+    250 deny any any 151.140.0.0/255.255.0.0 count
+    260 deny any any 165.130.0.0/255.255.0.0 count
+    270 deny any any 207.11.0.0/255.255.128.0 count
+    280 deny any any any count
+access-list ip lexmark
+    10 permit udp any any eq 67 count
+    20 permit udp any any eq 53 count
+    30 permit any any 10.64.168.52 count
+    40 permit any any 10.64.169.199 count
+    50 permit any any 10.64.171.70 count
+    60 permit any any 10.64.170.126 count
+    70 permit any any 10.128.0.0/255.128.0.0 count
+    80 permit any any 40.92.0.0/255.254.0.0 count
+    90 permit any any 40.107.0.0/255.255.0.0 count
+    100 permit any any 52.100.0.0/255.252.0.0 count
+    110 permit any any 104.47.0.0/255.255.128.0 count
+    120 permit any any 151.140.2.118 count
+    130 permit any any 151.140.105.171 count
+    140 permit any any 151.140.101.98 count
+    150 permit any any 151.140.101.99 count
+    160 permit any any 172.26.118.112 count
+    170 permit any any 172.26.118.113 count
+    180 permit any any 10.64.169.151 count
+    190 permit any any 10.64.171.234 count
+    200 permit any any 10.64.169.145 count
+    210 permit any any 10.64.169.231 count
+    220 deny any any 10.0.0.0/255.0.0.0 count
+    230 deny any any 172.16.0.0/255.240.0.0 count
+    240 deny any any 192.168.0.0/255.255.0.0 count
+    250 deny any any 151.140.0.0/255.255.0.0 count
+    260 deny any any 165.130.0.0/255.255.0.0 count
+    270 deny any any 207.11.0.0/255.255.128.0 count
+    280 deny any any any count
+access-list ip SNMP_ACL
+    10 permit any 10.130.72.0/255.255.252.0 any
+    20 permit any 151.140.0.0/16 any
+    30 permit any 165.130.0.0/16 any
+    40 permit any 172.0.0.0/8 any
+    50 permit any 192.168.50.0/24 any
+    60 permit any 207.11.12.0/24 any
+    70 permit any 207.11.21.0/24 any
+    80 permit any 10.74.220.32/28 any
+    90 permit any 10.128.5.168/255.128.7.255 any
+%if is_npcpacl=Y%
+    100 permit any 10.16.41.233/255.255.255.255 any
+%endif%
+!
+!----- Apply Contro Plane ACL -------
+apply access-list ip CONTROLPLANE control-plane vrf default
+!
+logging %syslog_server_1%
+ssh server vrf default
+banner motd #
+No unauthorized changes should be made during store operational hours.
+All after hour changes should go through the change notification process.
+Please contact The Network Operation Center (x. 10110) or The Store
+Network Engineering Team if you have any questions.#
+banner exec #
+*******************************************************************************
+                                  WARNING:
+           THIS SYSTEM IS PRIVATE PROPERTY FOR THE USE OF THE COMPANY
+                       **** AUTHORIZED USERS ONLY! ****
+Any use of this computer system shall be deemed to be express consent
+to monitoring of such use and to such additional monitoring as may be necessary
+to identify any unauthorized user. The system administrator or other
+representatives of the system owner may monitor system use at any time without
+further notice or consent. Unauthorized use of this system and any other
+criminal conduct revealed by such use is subject to disclosure to law
+enforcement officials and prosecution to the full extent of the law.
+Unauthorized access is a violation of state and federal, civil and criminal
+laws.
+*******************************************************************************#
+!dhcpv4-snooping
+!   no dhcpv4-snooping option 82
+vlan 1
+!Check _site_type to determine whether this is IDF or WAN media conversion switch. Add vlans as appriopriate for each use case
+%if _site_type=ST%
+    vlan 2
+        name STORE-NETWORK-VLAN
+        ip igmp snooping enable
+    vlan 10
+        name NAC-STAGING-VLAN
+        ip igmp snooping enable
+    vlan 12
+        name CORPORATE-WIFI-VLAN
+        ip igmp snooping enable
+    vlan 13
+        name VENDOR-DEVICES-WIFI
+    vlan 14
+        name RESERVED
+        ip igmp snooping enable
+    vlan 15
+        name IOT-DEVICES-WIFI
+    vlan 19
+        name GUEST-WIFI-PASSPOINT
+    vlan 20
+        name RESERVED
+    vlan 25
+        name RESERVED
+    vlan 26
+        name DEMOPOOL1-DEMOPOOL2
+    vlan 30
+        name POS-VLAN
+    vlan 44
+        name IP-CAMERA-VLAN
+        ip igmp snooping enable
+    vlan 77
+        name RESERVED
+    vlan 90
+        name RESERVED
+    vlan 150
+        name RESERVED
+    vlan 190
+        name SDW-PUB-WIFI-VPN30
+    vlan 260
+        name SDW-IOT-VPN20
+    vlan 555
+        name VOICE-VLAN
+        voice
+    vlan 815
+        name VERINT
+    vlan 4093
+        name RESERVED
+%else%
+    %if vlan_50_tag=50%
+        vlan 50
+        name MPLS
+    %else%
+        vlan %vlan_50_tag%
+        name MPLS
+    %endif%
+    %if vlan_51_tag%
+        vlan %vlan_51_tag%
+        name MIS
+    %else%
+        vlan 51
+        name MIS
+    %endif%
+%endif%
+vlan 802
+    name THD-MGMT-VLAN
+no spanning-tree
+!qos queue-profile home-depot
+!    map queue 0 local-priority 0
+!    map queue 1 local-priority 1
+!    map queue 2 local-priority 2
+!    map queue 3 local-priority 3
+!    map queue 4 local-priority 4
+!    map queue 5 local-priority 7
+!    map queue 6 local-priority 6
+!    map queue 7 local-priority 5
+!qos schedule-profile QOS-P-vsat-scheduler
+!    dwrr queue 0 weight 5
+!    dwrr queue 1 weight 9
+!    dwrr queue 2 weight 44
+!    dwrr queue 3 weight 37
+!    dwrr queue 4 weight 1
+!    dwrr queue 5 weight 1
+!    dwrr queue 6 weight 3
+!    strict queue 7 max-bandwidth 115
+!apply qos queue-profile home-depot schedule-profile factory-default
+!qos dscp-map 40 local-priority 7 color green
+!qos dscp-map 41 local-priority 7 color green
+!qos dscp-map 42 local-priority 7 color green
+!qos dscp-map 43 local-priority 7 color green
+!qos dscp-map 44 local-priority 7 color green
+!qos dscp-map 45 local-priority 7 color green
+!qos dscp-map 47 local-priority 7 color green
+!
+interface lag 51
+    no shutdown
+    description MDF
+    vlan trunk native 1
+!   if switch _site_type is WAN, only trunk vlan 802 to MDF, otherwise trunk normal port-access and AP Uplink vlans
+    %if _site_type=WAN%
+        vlan trunk allowed 1,802
+    %else%
+        vlan trunk allowed 1-2,10,12-15,19-20,25-26,30,44,77,190,260,555,802,815,4093
+    %endif%
+    lacp mode active
+    lacp rate fast
+    qos trust dscp
+interface lag 52
+    no shutdown
+    description MDF
+    vlan trunk native 1
+!   if switch _site_type is WAN, only trunk vlan 802 to MDF, otherwise trunk normal port-access and AP Uplink vlans
+    %if _site_type=WAN%
+        vlan trunk allowed 1,802
+    %else%
+        vlan trunk allowed 1-2,10,12-15,19-20,25-26,30,44,77,190,260,555,802,815,4093
+    %endif%
+    lacp mode active
+    lacp rate fast
+    qos trust dscp
+!
+! Determine configuration type for IDF or WAN media conversion using _site_type variable
+! The check here is first for the simplier WAN type, and otherwise configure as IDF
+%if _site_type=WAN%
+    interface lag 3
+        no shutdown
+        description MIS-QOS-Link
+        %if vlan_51_tag%
+            vlan access %vlan_51_tag%
+        %else%
+            vlan access 51
+        %endif%
+        lacp mode active
+        lacp rate fast
+        qos trust dscp
+    interface lag 4
+        no shutdown
+        description MPLS-QOS-Link
+        %if vlan_50_tag=50%
+            vlan access 50
+        %else%
+            vlan access %vlan_50_tag%
+        %endif%
+        lacp mode active
+        lacp rate fast
+        qos trust dscp
+! Determine if the 6100 is in Staging is at OB using _is_staging variable.
+! Set 1/1/1 to no shut if in staging 
+    %if is_staging=Y%
+        interface 1/1/1
+            no shutdown
+            description Local-Link-In-Staging 
+            vlan access 1
+            spanning-tree bpdu-guard
+            loop-protect
+    %else%
+        interface 1/1/1
+            shutdown
+            description Unused
+            vlan access 1
+            spanning-tree bpdu-guard
+            loop-protect
+    %endif%
+    interface 1/1/2
+        no shutdown
+        description ATT_MIS-MPLS
+        loop-protect
+        vlan trunk native 1
+        vlan trunk allowed %vlan_50_tag%,%vlan_51_tag%
+		speed %wan_speed_duplex%						  
+    interface 1/1/3
+        shutdown
+        description Unused
+        vlan access 1
+        spanning-tree bpdu-guard
+        loop-protect
+    interface 1/1/4
+        no shutdown
+        description ATT_MIS-MPLS
+        loop-protect
+        vlan trunk native 1
+        vlan trunk allowed %vlan_50_tag%,%vlan_51_tag%
+		speed %wan_speed_duplex%
+    interface 1/1/5-1/1/8
+        shutdown
+        description Unused
+        vlan access 1
+        spanning-tree bpdu-guard
+        loop-protect
+    interface 1/1/9
+        no shutdown
+        description MIS-QOS-Link
+        lag 3
+    interface 1/1/10
+        no shutdown
+        description MIS-QOS-Link
+        lag 3
+    interface 1/1/11
+        no shutdown
+        description MPLS-QOS-Link
+        lag 4
+    interface 1/1/12
+        no shutdown
+        description MPLS-QOS-Link
+        lag 4
+%else%
+    %if is_staging=Y%
+        interface 1/1/1
+            no shutdown
+            description Local-Link-In-Staging 
+            vlan access 1
+            spanning-tree bpdu-guard
+            loop-protect
+        interface 1/1/2-1/1/7
+            no shutdown
+            description Port-Access
+            vlan access 2
+            spanning-tree bpdu-guard
+            loop-protect
+            aaa authentication port-access client-limit 2
+            aaa authentication port-access reject-role 802.1x_deny_role
+            aaa authentication port-access dot1x authenticator
+                cached-reauth
+                cached-reauth-period 259200
+                reauth-period 3600
+                eapol-timeout 1
+                enable
+            aaa authentication port-access mac-auth
+                cached-reauth
+                cached-reauth-period 259200
+                reauth-period 3600
+                enable
+    %else%
+        interface 1/1/1-1/1/7
+            no shutdown
+            description Port-Access
+            vlan access 2
+            spanning-tree bpdu-guard
+            loop-protect
+            aaa authentication port-access client-limit 2
+            aaa authentication port-access reject-role 802.1x_deny_role
+            aaa authentication port-access dot1x authenticator
+                cached-reauth
+                cached-reauth-period 259200
+                reauth-period 3600
+                eapol-timeout 1
+                enable
+            aaa authentication port-access mac-auth
+                cached-reauth
+                cached-reauth-period 259200
+                reauth-period 3600
+                enable
+    %endif%
+    interface 1/1/8
+        no shutdown
+        description Aruba_UXI
+        spanning-tree bpdu-guard
+        loop-protect
+		loop-protect vlan 19,26,555
+        vlan trunk native 26
+        vlan trunk allowed 19,26,555
+    interface 1/1/9-1/1/12
+        no shutdown
+        description AP_Uplink
+        loop-protect
+		loop-protect vlan 2,10,12-15,19,26,44,77,190,802 
+        vlan trunk native 802
+        vlan trunk allowed 2,10,12-15,19,26,44,77,190,802
+%endif%
+interface 1/1/13
+    no shutdown
+    description MDF
+    lag 51
+interface 1/1/14
+    no shutdown
+    description MDF
+    lag 51
+interface 1/1/15
+    no shutdown
+    description MDF
+    lag 51
+interface 1/1/16
+    no shutdown
+    description MDF
+    lag 51
+!
+! Determine if the 6100 is in Staging is at OB using _is_staging variable.
+! Set vlan 1 to used DHCP if in staging 
+%if is_staging=Y%
+    interface vlan 1
+        ip dhcp
+%else%
+    interface vlan 1
+        no ip dhcp
+%endif%
+
+interface vlan 802
+    ip address %vlan_802_ip%
+!
+snmp-server vrf default
+snmp-server community %snmp_community_1%
+    access-list ipv4 SNMP_ACL
+snmp-server community %snmp_community_2%
+    access-list ipv4 SNMP_ACL
+snmp-server community %snmp_community_3%
+    access-list ipv4 SNMP_ACL
+snmp-server community %snmp_community_4%
+    access-list ipv4 SNMP_ACL
+snmp-server community %snmp_community_5%
+    access-list ipv4 SNMP_ACL
+snmp-server host %snmp_trap_dest_1% trap version v2c community %snmp_trap_comm_1%
+snmp-server host %snmp_trap_dest_2% trap version v2c community %snmp_trap_comm_2%
+snmpv3 user m01620 auth sha auth-pass ciphertext AQBapXwiL7KSfYKK8i9ZITTokyTnXjxji6SmS6a8S+MDmpb6CAAAAA9gNnhRWCgR priv aes priv-pass ciphertext AQBapXwiL7KSfYKK8i9ZITTokyTnXjxji6SmS6a8S+MDmpb6CAAAAA9gNnhRWCgR
+snmpv3 user thd-sine auth sha auth-pass ciphertext AQBapTsSi+0YFenuHLX1GXO2WlT+I2qUKcfj/oPDOZvZvnSCCAAAAGPB/lNlnnb4 priv aes priv-pass ciphertext AQBapTsSi+0YFenuHLX1GXO2WlT+I2qUKcfj/oPDOZvZvnSCCAAAAGPB/lNlnnb4
+snmpv3 user thd-service auth md5 auth-pass ciphertext AQBapTsSi+0YFenuHLX1GXO2WlT+I2qUKcfj/oPDOZvZvnSCCAAAAGPB/lNlnnb4 priv aes priv-pass ciphertext AQBapTsSi+0YFenuHLX1GXO2WlT+I2qUKcfj/oPDOZvZvnSCCAAAAGPB/lNlnnb4
+!
+ip route 0.0.0.0/0 %ip_gateway%
+!---Port Mirror---
+mirror session 1
+    disable
+!
+ip dns domain-name sw%_sys_id%1.%_site_type%%_site_number%.homedepot.com
+! Determine if the 6100 is in Staging is at OB using _is_staging variable.
+! Set DNS to googleif in staging %if is_staging=Y%
+%if is_staging=Y%
+    ip dns server-address 8.8.8.8 
+%else%
+    ip dns server-address %dns_server_primary%
+    ip dns server-address %dns_server_secondary%
+%endif%
+!
+!
+!
+!
+!
+! Determine if the 6100 is in Staging is at OB using _is_staging variable.
+! Set IP Source VLAN to VLAN 1 %if is_staging=Y%
+%if is_staging=Y%
+    ip source-interface all interface vlan1 
+%else%
+    ip source-interface all interface vlan802
+%endif%
+https-server vrf default
+!
+! TEMPLATE NAME: 6100_us_wanidf -- VERSION: 21 -- PILOT_BRANCH
