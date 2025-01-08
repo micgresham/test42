@@ -1,0 +1,60 @@
+name: Process Templates for FW13
+
+on:
+  push:
+    branches:
+      - pilot
+  workflow_dispatch:
+
+jobs:
+  process-templates:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Ensure the full repository is cloned for pushing changes
+
+    - name: Set Environment Variables
+      run: |
+        export MAIN_PATH="${{ github.workspace }}/cx_switches"
+        export CONFIG_BRANCH="main"  # Replace with appropriate value
+        export NEW_TEMPLATES="template1 template2 template3"  # Replace with your actual templates
+        echo "MAIN_PATH=${MAIN_PATH}" >> $GITHUB_ENV
+        echo "CONFIG_BRANCH=${CONFIG_BRANCH}" >> $GITHUB_ENV
+        echo "NEW_TEMPLATES=${NEW_TEMPLATES}" >> $GITHUB_ENV
+
+    - name: Create FW13 Copies
+      run: |
+        for template in $NEW_TEMPLATES; do
+          cp $MAIN_PATH/$template.txt $MAIN_PATH/fw13-$template.txt
+        done
+
+    - name: Update Header for FW13
+      run: |
+        for template in $NEW_TEMPLATES; do
+          sed -i 's|^! TEMPLATE NAME:.*|! TEMPLATE NAME: FW VERSION 13 '"$template"' -- VERSION: 1 -- '"$CONFIG_BRANCH"'|' $MAIN_PATH/fw13-$template.txt
+        done
+
+    - name: Replace Blackhole with Nullroute
+      run: |
+        for template in $NEW_TEMPLATES; do
+          sed -i 's/blackhole/nullroute/g' $MAIN_PATH/fw13-$template.txt
+        done
+
+    - name: Stage Changes
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add cx_switches/fw13-*.txt
+
+    - name: Commit Changes
+      run: |
+        git commit -m "Update FW13 templates for ${CONFIG_BRANCH}" || echo "No changes to commit"
+
+    - name: Push Changes
+      run: |
+        git push origin main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
