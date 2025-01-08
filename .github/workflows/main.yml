@@ -3,7 +3,7 @@ name: Process Templates for FW13
 on:
   push:
     branches:
-      - pilot
+      - NWEE*  # Matches any branch starting with "NWEE"
   workflow_dispatch:
 
 jobs:
