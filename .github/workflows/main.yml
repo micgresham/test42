@@ -2,8 +2,9 @@ name: Process Specific Templates
 
 on:
   push:
-    branches:
-      - pilot*  # Trigger on commits to branches starting with "pilot"
+    branches-ignore:
+      - main
+      - pilot
   workflow_dispatch:  # Allow manual runs
 
 jobs:
