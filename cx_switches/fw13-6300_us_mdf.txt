@@ -1,5 +1,5 @@
 !
-! TEMPLATE NAME: FW VERSION 13 6300_us_mdf -- VERSION: 105 -- PILOT_BRANCH
+! TEMPLATE NAME: FW VERSION 13 6300_us_mdf -- VERSION: 1 -- main
 !
 hostname %_site_type%%_site_number%-MDF
 allow-unsupported-transceiver
@@ -4078,10 +4078,6 @@ class ip QOS-m-video-af41
     150 match any any 209.197.192.0/19 count
     160 match any any 210.4.192.0/20 count
     170 match any any 216.151.128.0/19 count
-    180 match any any 10.72.233.195 count 
-    190 match any any 10.72.236.229 count 
-    200 match any any 10.72.237.253 count 
-    210 match any any 10.72.227.206 count 
 class ip QOS-m-voice-ef
     5 match any any 10.16.46.254 count
     10 comment ip access-list extended QOSa_voip-media
@@ -4569,7 +4565,7 @@ qos schedule-profile QOS-P-mpls-scheduler
     dwrr queue 4 weight 20
     dwrr queue 5 weight 1
     dwrr queue 6 weight 3
-    strict queue 7 max-bandwidth 768 kbps
+    strict queue 7 max-bandwidth 768
 qos schedule-profile QOS-P-sdwan-mpls-scheduler
     dwrr queue 0 weight 5
     dwrr queue 1 weight 9
@@ -4587,7 +4583,7 @@ qos schedule-profile QOS-P-vsat-scheduler
     dwrr queue 4 weight 1
     dwrr queue 5 weight 1
     dwrr queue 6 weight 3
-    strict queue 7 max-bandwidth 115 kbps
+    strict queue 7 max-bandwidth 115
 qos schedule-profile test
 apply qos queue-profile home-depot schedule-profile factory-default
 qos dscp-map 40 local-priority 7 color green
@@ -4606,23 +4602,23 @@ interface lag 11
 %endif%
 ! set is_10mb=Y for 10MB circuit
     %if is_10mb=Y%
-       qos shape 6600 kbps
+       qos shape 6600
     %endif%
 ! set is_10mb=20 for 20MB circuit
     %if is_10mb=20%
-       qos shape 13200 kbps
+       qos shape 13200
     %endif%
 ! set is_10mb=50 for 50MB circuit
     %if is_10mb=50%
-        qos shape 38000 kbps
+        qos shape 38000
     %endif%
 ! set is_10mb=N for 100MB circuit
     %if is_10mb=N%
-        qos shape 76000 kbps
+        qos shape 76000
     %endif%
 ! set is_10mb=cust for custom speed
    %if is_10mb=cust%
-        qos shape %cust_mis% kbps
+        qos shape %cust_mis%
     %endif%   
     description MIS-QOS-Link
     no routing
@@ -4637,45 +4633,45 @@ interface lag 12
 ! This is when MIS is NOT present, Full circuit speed is assigned to MPLS
 ! set is_10mb=Y for 10MB circuit
     %if is_10mb=Y%
-        qos shape 9800 kbps
+        qos shape 9800
     %endif%
 ! set is_10mb=20 for 20MB circuit
     %if is_10mb=20%
-        qos shape 19800 kbps
+        qos shape 19800
     %endif%
 ! set is_10mb=50 for 50MB circuit
     %if is_10mb=50%
-        qos shape 49000 kbps
+        qos shape 49000
     %endif%
 ! set is_10mb=N for 100MB circuit  
     %if is_10mb=N% 
-        qos shape 98000 kbps
+        qos shape 98000
     %endif%
 ! set is_10mb=cust for custom speed
     %if is_10mb=cust%
-        qos shape %cust_mpls_all% kbps
+        qos shape %cust_mpls_all%
     %endif% 
 %else%
 ! This is when MIS is present, Circuit speed is divided with MIS-80 MPLS-20 percent rule for fixed speed  
 ! set is_10mb=Y for 10MB circuit
     %if is_10mb=Y%
-        qos shape 2900 kbps
+        qos shape 2900
     %endif%
 ! set is_10mb=20 for 20MB circuit
     %if is_10mb=20%
-        qos shape 5800 kbps
+        qos shape 5800
     %endif%
 ! set is_10mb=50 for 50MB circuit
     %if is_10mb=50%
-        qos shape 9500 kbps
+        qos shape 9500
     %endif%
 ! set is_10mb=N for 100MB circuit
     %if is_10mb=N%
-        qos shape 19000 kbps
+        qos shape 19000
     %endif%
 ! set is_10mb=cust for custom speed
     %if is_10mb=cust%
-        qos shape %cust_mpls% kbps
+        qos shape %cust_mpls%
     %endif%
 %endif%
     description MPLS-QOS-Link
@@ -6657,4 +6653,4 @@ dhcp-server vrf default
     no authoritative
     disable
 
-! TEMPLATE NAME: FW VERSION 13 6300_us_mdf -- VERSION: 105 -- PILOT_BRANCH
+! TEMPLATE NAME: FW VERSION 13 6300_us_mdf -- VERSION: 1 -- main
