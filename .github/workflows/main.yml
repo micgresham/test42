@@ -1,10 +1,10 @@
-name: Process Templates for FW13
+name: Process Specific Templates
 
 on:
   push:
     branches:
-      - NWEE*  # Matches any branch starting with "NWEE"
-  workflow_dispatch:
+      - pilot*  # Trigger on commits to branches starting with "pilot"
+  workflow_dispatch:  # Allow manual runs
 
 jobs:
   process-templates:
@@ -14,47 +14,123 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Ensure the full repository is cloned for pushing changes
+        fetch-depth: 0
 
-    - name: Set Environment Variables
+    - name: Define Monitored Files
       run: |
-        export MAIN_PATH="${{ github.workspace }}/cx_switches"
-        export CONFIG_BRANCH="main"  # Replace with appropriate value
-        export NEW_TEMPLATES="template1 template2 template3"  # Replace with your actual templates
-        echo "MAIN_PATH=${MAIN_PATH}" >> $GITHUB_ENV
-        echo "CONFIG_BRANCH=${CONFIG_BRANCH}" >> $GITHUB_ENV
-        echo "NEW_TEMPLATES=${NEW_TEMPLATES}" >> $GITHUB_ENV
+        # List of files to monitor for changes
+        export MONITORED_FILES="\
+        cx_switches/6300_us_mdf.txt \
+        cx_switches/6300_us_idf.txt \
+        cx_switches/6300_labs_mdf.txt \
+        cx_switches/6300_canada_mdf.txt \
+        cx_switches/6300_canada_idf.txt \
+        cx_switches/6100_us_wanidf.txt \
+        cx_switches/6100_canada_wanidf.txt \
+        cx_switches/6300_dr_midf.txt"
+        echo "MONITORED_FILES=${MONITORED_FILES}" >> $GITHUB_ENV
+
+    - name: Identify Changed Files
+      id: changed_files
+      run: |
+        # Get the list of changed files
+        export CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+        
+        # Filter for changes in the monitored file list
+        export FILE_LIST=""
+        for file in $MONITORED_FILES; do
+          if echo "$CHANGED_FILES" | grep -qx "$file"; then
+            FILE_LIST="$FILE_LIST $file"
+          fi
+        done
+        echo "FILE_LIST=${FILE_LIST}" >> $GITHUB_ENV
+        echo "::set-output name=file_list::$FILE_LIST"
+
+    - name: Debug Changed Monitored Files
+      if: steps.changed_files.outputs.file_list != ''
+      run: |
+        echo "Monitored files that changed:"
+        echo "${{ steps.changed_files.outputs.file_list }}"
 
     - name: Create FW13 Copies
+      if: steps.changed_files.outputs.file_list != ''
       run: |
-        for template in $NEW_TEMPLATES; do
-          cp $MAIN_PATH/$template.txt $MAIN_PATH/fw13-$template.txt
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          cp "$file" "cx_switches/fw13-$base_name.txt"
         done
 
     - name: Update Header for FW13
+      if: steps.changed_files.outputs.file_list != ''
       run: |
-        for template in $NEW_TEMPLATES; do
-          sed -i 's|^! TEMPLATE NAME:.*|! TEMPLATE NAME: FW VERSION 13 '"$template"' -- VERSION: 1 -- '"$CONFIG_BRANCH"'|' $MAIN_PATH/fw13-$template.txt
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          sed -i 's|^! TEMPLATE NAME:.*|! TEMPLATE NAME: FW VERSION 13 '"$base_name"' -- VERSION: 1 -- main|' "cx_switches/fw13-$base_name.txt"
         done
 
     - name: Replace Blackhole with Nullroute
+      if: steps.changed_files.outputs.file_list != ''
       run: |
-        for template in $NEW_TEMPLATES; do
-          sed -i 's/blackhole/nullroute/g' $MAIN_PATH/fw13-$template.txt
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          sed -i 's/blackhole/nullroute/g' "cx_switches/fw13-$base_name.txt"
         done
 
-    - name: Stage Changes
+    - name: Remove 1010fw Comments
+      if: steps.changed_files.outputs.file_list != ''
+      run: |
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          sed -i '/! 1010fw/d' "cx_switches/fw13-$base_name.txt"
+        done
+
+    - name: Replace 1010 Percent Placeholder
+      if: steps.changed_files.outputs.file_list != ''
+      run: |
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          sed -i 's/<1010percenthere>/%/g' "cx_switches/fw13-$base_name.txt"
+        done
+
+    - name: Remove 1013fw Comments
+      if: steps.changed_files.outputs.file_list != ''
+      run: |
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          sed -i '/! 1013fw/d' "cx_switches/fw13-$base_name.txt"
+        done
+
+    - name: Replace 1013 Percent Placeholder
+      if: steps.changed_files.outputs.file_list != ''
+      run: |
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          sed -i 's/<1013percenthere>/%/g' "cx_switches/fw13-$base_name.txt"
+        done
+
+    - name: Append KBPS to Strict Queue Lines
+      if: steps.changed_files.outputs.file_list != ''
+      run: |
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          sed -i -E 's|^(strict\s+queue\s+\d+\s+max-bandwidth\s+\d+\s*)$|\1 kbps|' "cx_switches/fw13-$base_name.txt"
+        done
+
+    - name: Append KBPS to QoS Shape Lines
+      if: steps.changed_files.outputs.file_list != ''
+      run: |
+        for file in $FILE_LIST; do
+          base_name=$(basename "$file" .txt)
+          sed -i -E 's|^(qos\s+shape\s+\%?[a-zA-Z_\d]+\%?\s*)$|\1 kbps|' "cx_switches/fw13-$base_name.txt"
+        done
+
+    - name: Commit and Push Changes
+      if: steps.changed_files.outputs.file_list != ''
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add cx_switches/fw13-*.txt
-
-    - name: Commit Changes
-      run: |
-        git commit -m "Update FW13 templates for ${CONFIG_BRANCH}" || echo "No changes to commit"
-
-    - name: Push Changes
-      run: |
-        git push origin main
+        git add "cx_switches/fw13-*.txt"
+        git commit -m "Update FW13 templates for monitored files" || echo "No changes to commit"
+        git push origin ${{ github.ref_name }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
