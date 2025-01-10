@@ -4078,10 +4078,6 @@ class ip QOS-m-video-af41
     150 match any any 209.197.192.0/19 count
     160 match any any 210.4.192.0/20 count
     170 match any any 216.151.128.0/19 count
-    180 match any any 10.72.233.195 count 
-    190 match any any 10.72.236.229 count 
-    200 match any any 10.72.237.253 count 
-    210 match any any 10.72.227.206 count 
 class ip QOS-m-voice-ef
     5 match any any 10.16.46.254 count
     10 comment ip access-list extended QOSa_voip-media
